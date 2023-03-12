@@ -1,10 +1,8 @@
 package fr.sunderia.bomberman;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -13,15 +11,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
-
-import org.jetbrains.annotations.NotNull;
-import org.jglrxavpok.hephaistos.nbt.NBT;
-import org.jglrxavpok.hephaistos.nbt.NBTCompound;
 import org.jglrxavpok.hephaistos.nbt.NBTException;
 import org.jglrxavpok.hephaistos.nbt.NBTReader;
 
@@ -128,8 +119,9 @@ public class Bomberman extends Extension {
                     player.damage(DamageType.fromPlayer(this.player), 1f);
                     player.kill();
                 });
-                ParticlePacket packet = ParticleCreator.createParticlePacket(Particle.SONIC_BOOM, newPos.x() + .5, newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 10);
+                ParticlePacket packet = ParticleCreator.createParticlePacket(Particle.SMOKE, newPos.x() + .5, newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 10);
                 PacketUtils.sendPacket(getViewersAsAudience(), packet);
+                PacketUtils.sendPacket(getViewersAsAudience(), ParticleCreator.createParticlePacket(Particle.LAVA, newPos.x() + .5, newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 10));
                 int id = getInstance().getBlock(newPos).id();
                 if(id != Block.AIR.id() && id != Block.BARRIER.id()) {
                     if(id == Block.BRICKS.id()) {
