@@ -1,0 +1,5 @@
+{
+	"entrypoint": "fr.sunderia.bomberman.Bomberman",
+	"name": "Bomberman",
+	"version": "1.0.0"
+}
