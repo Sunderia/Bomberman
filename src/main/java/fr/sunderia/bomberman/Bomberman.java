@@ -1,8 +1,11 @@
 package fr.sunderia.bomberman;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.net.URI;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -13,6 +16,8 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
+
+import org.apache.commons.codec.digest.DigestUtils;
 import org.jglrxavpok.hephaistos.nbt.NBTException;
 import org.jglrxavpok.hephaistos.nbt.NBTReader;
 
@@ -30,7 +35,9 @@ import net.kyori.adventure.text.JoinConfiguration;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
+import net.minestom.server.entity.ItemEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
@@ -51,6 +58,7 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.play.SetCooldownPacket;
+import net.minestom.server.resourcepack.ResourcePack;
 import net.minestom.server.timer.TaskSchedule;
 import net.minestom.server.utils.NamespaceID;
 import net.minestom.server.utils.chunk.ChunkUtils;
@@ -61,6 +69,8 @@ public class Bomberman extends Extension {
     static final Map<UUID, Integer> powerMap = new HashMap<>();
     private final Gson gson = new GsonBuilder().create();
     public static final Random random = new Random();
+    private String resourcePackSha1;
+    private final String resourcePackURL = "https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip";
 
 
     @Override
@@ -70,6 +80,15 @@ public class Bomberman extends Extension {
         var extensionNode = getEventNode();
         OpenToLAN.open();
         registerListeners(extensionNode, container);
+        String sha1 = null;
+        try {
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            URI.create(resourcePackURL).toURL().openStream().transferTo(os);
+            sha1 = new String(DigestUtils.getSha1Digest().digest(os.toByteArray()));
+        } catch(IOException e) {
+            getLogger().error(Component.text("Couldn't get the SHA1 of the Resource Pack"), e);
+        }
+        this.resourcePackSha1 = sha1;
     }
 
     private void registerListeners(EventNode<Event> extensionNode, InstanceContainer container) {     
@@ -87,6 +106,7 @@ public class Bomberman extends Extension {
                     Component.text(" : " + powerMap.get(player.getUuid())))
                         .style(b -> b.font(Key.key("default")))),
                 TaskSchedule.immediate(), TaskSchedule.tick(10));
+            if(resourcePackSha1 != null) player.setResourcePack(ResourcePack.forced("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip", null));
         });
 
         extensionNode.addListener(PlayerChatEvent.class, e -> {
@@ -139,10 +159,13 @@ public class Bomberman extends Extension {
 
         extensionNode.addListener(PickupItemEvent.class, event -> {
             if(!(event.getLivingEntity() instanceof Player player) || event.getItemStack().material().id() != Material.NAUTILUS_SHELL.id()) return;
+            if(player.getGameMode() != GameMode.ADVENTURE) {
+                event.setCancelled(true);
+                return;
+            }
             int customModelData = event.getItemStack().meta().getCustomModelData();
             Powerup powerup = Powerup.values()[customModelData - 1];
             powerup.getEffect().accept(player);
-            player.sendMessage("You just got a " + powerup.name() + ". Your current explosion power is " + powerMap.get(player.getUuid()) + " blocks");
         });
     }
     
@@ -160,6 +183,10 @@ public class Bomberman extends Extension {
     private void resetGame(Instance instance) {
         powerMap.replaceAll((k,v) -> 2);
         instance.getPlayers().forEach(Player::clearEffects);
+        instance.getEntities().stream()
+            .filter(e -> e instanceof ItemEntity).map(ItemEntity.class::cast)
+            .filter(item -> item.getEntityMeta().getItem().material().id() == Material.NAUTILUS_SHELL.id())
+            .forEach(Entity::remove);
     }
 
     private void generateStructure(Instance container) {
