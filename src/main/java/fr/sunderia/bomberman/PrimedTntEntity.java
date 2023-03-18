@@ -47,10 +47,17 @@ public class PrimedTntEntity extends Entity {
             getInstance().getPlayers().stream().filter(
                     p -> p.getPosition().sameBlock(newPos) && !p.isDead() && p.getGameMode() == GameMode.ADVENTURE)
                     .forEach(player -> {
-                        player.sendMessage("You were killed by " + this.player.getUsername());
-                        player.damage(DamageType.fromPlayer(this.player), 1f);
+                        DamageType damageType = new DamageType("attack.explosion");
+                        player.damage(damageType, 100f);
                         player.kill();
                     });
+            getInstance().getEntities().stream().filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity).forEach(entity -> {
+                if(entity.getEntityType().id() == EntityType.ITEM.id()) {
+                    entity.remove();
+                    return;
+                }
+                ((PrimedTntEntity) entity).setFuseTime(1);
+            });
             ParticlePacket packet = ParticleCreator.createParticlePacket(Particle.SMOKE, newPos.x() + .5,
                     newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 10);
             PacketUtils.sendPacket(getViewersAsAudience(), packet);
@@ -87,6 +94,10 @@ public class PrimedTntEntity extends Entity {
         breakBlocks(power, true, true);
         breakBlocks(power, false, false);
         breakBlocks(power, false, true);
+    }
+
+    public void setFuseTime(int fuseTime) {
+        this.fuseTime = fuseTime;
     }
 
     @Override

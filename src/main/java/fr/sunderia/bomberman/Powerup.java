@@ -1,25 +1,24 @@
 package fr.sunderia.bomberman;
 
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 
+import net.minestom.server.attribute.Attribute;
+import net.minestom.server.attribute.AttributeInstance;
+import net.minestom.server.attribute.AttributeModifier;
+import net.minestom.server.attribute.AttributeOperation;
 import net.minestom.server.entity.Player;
-import net.minestom.server.potion.Potion;
-import net.minestom.server.potion.PotionEffect;
 
 enum Powerup {
-    // TODO: Add min and max
     FIRE_UP(p -> incrementPower(p, 1)),
     FULL_FIRE(p -> Bomberman.powerMap.put(p.getUuid(), 8)),
     FIRE_DOWN(p -> incrementPower(p, -1)),
-    SPEED_UP(p -> p.addEffect(new Potion(PotionEffect.SPEED,
-            (byte) (p.getActiveEffects().stream().filter(e -> e.getPotion().effect().id() == PotionEffect.SPEED.id())
-                    .findFirst().map(e -> (int) e.getPotion().amplifier()).orElse(0) + 1),
-            Integer.MAX_VALUE))),
-    SPEED_DOWN(p -> p.addEffect(new Potion(PotionEffect.SLOWNESS,
-            (byte) (p.getActiveEffects().stream().filter(e -> e.getPotion().effect().id() == PotionEffect.SLOWNESS.id())
-                    .findFirst().map(e -> (int) e.getPotion().amplifier()).orElse(0) + 1),
-            Integer.MAX_VALUE))),
-            ;
+    //MAX SPEED .1f
+    SPEED_UP(p -> incrementSpeed(p, 0.1f / 8)),
+    //MIN SPEED -0.025
+    SPEED_DOWN(p -> incrementSpeed(p, -0.025f / 4)),
+    ;
 
     private final Consumer<Player> effect;
 
@@ -29,6 +28,11 @@ enum Powerup {
 
     public Consumer<Player> getEffect() {
         return effect;
+    }
+
+    private static void incrementSpeed(Player player, float amount) {
+        AttributeInstance currentAttribute = player.getAttribute(Attribute.MOVEMENT_SPEED);
+        currentAttribute.addModifier(new AttributeModifier("speed", amount, AttributeOperation.ADDITION));
     }
 
     private static void incrementPower(Player p, int increment) {

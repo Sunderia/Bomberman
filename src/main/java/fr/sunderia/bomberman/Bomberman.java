@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.net.URI;
-import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -14,7 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -32,12 +30,16 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.title.TitlePart;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.attribute.Attribute;
+import net.minestom.server.attribute.AttributeModifier;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.GameMode;
-import net.minestom.server.entity.ItemEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
@@ -71,7 +73,6 @@ public class Bomberman extends Extension {
     public static final Random random = new Random();
     private String resourcePackSha1;
     private final String resourcePackURL = "https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip";
-
 
     @Override
     public void initialize() {
@@ -130,7 +131,7 @@ public class Bomberman extends Extension {
                     p.teleport(new Pos(0, 45, 0));
                     p.setGameMode(GameMode.ADVENTURE);
                 });
-            winner.sendMessage("You won");
+            winner.sendTitlePart(TitlePart.TITLE, Component.text("You won", NamedTextColor.GREEN));
             winner.teleport(new Pos(0, 45, 0));
             generateStructure(winner.getInstance());
             resetGame(winner.getInstance());
@@ -182,10 +183,15 @@ public class Bomberman extends Extension {
 
     private void resetGame(Instance instance) {
         powerMap.replaceAll((k,v) -> 2);
-        instance.getPlayers().forEach(Player::clearEffects);
+        instance.getPlayers().forEach(p -> {
+            p.clearEffects();
+            UUID[] uuids = p.getAttribute(Attribute.MOVEMENT_SPEED).getModifiers().stream().map(AttributeModifier::getId).toArray(UUID[]::new);
+            for(UUID uuid : uuids) {
+                p.getAttribute(Attribute.MOVEMENT_SPEED).removeModifier(uuid);
+            }
+        });
         instance.getEntities().stream()
-            .filter(e -> e instanceof ItemEntity).map(ItemEntity.class::cast)
-            .filter(item -> item.getEntityMeta().getItem().material().id() == Material.NAUTILUS_SHELL.id())
+            .filter(e -> e.getEntityType().id() == EntityType.TNT.id() || e.getEntityType().id() == EntityType.ITEM.id())
             .forEach(Entity::remove);
     }
 
