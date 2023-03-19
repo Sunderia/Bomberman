@@ -104,7 +104,7 @@ public class Bomberman extends Extension {
             player.scheduler()
                 .scheduleTask(() -> player.sendActionBar(Component.join(JoinConfiguration.separator(Component.text(" ")),
                     Component.text("\uE000").style(b -> b.font(Key.key("bomberman", "font"))),
-                    Component.text(" : " + powerMap.get(player.getUuid())))
+                    Component.text(": " + powerMap.get(player.getUuid())))
                         .style(b -> b.font(Key.key("default")))),
                 TaskSchedule.immediate(), TaskSchedule.tick(10));
             if(resourcePackSha1 != null) player.setResourcePack(ResourcePack.forced("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip", null));

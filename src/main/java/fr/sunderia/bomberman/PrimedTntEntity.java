@@ -51,7 +51,7 @@ public class PrimedTntEntity extends Entity {
                         player.damage(damageType, 100f);
                         player.kill();
                     });
-            getInstance().getEntities().stream().filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity).forEach(entity -> {
+            getInstance().getEntities().stream().filter(e -> e.getPosition().sameBlock(newPos)).filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity).forEach(entity -> {
                 if(entity.getEntityType().id() == EntityType.ITEM.id()) {
                     entity.remove();
                     return;
