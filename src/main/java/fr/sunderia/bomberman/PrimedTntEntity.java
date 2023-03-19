@@ -62,7 +62,7 @@ public class PrimedTntEntity extends Entity {
                     newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 10);
             PacketUtils.sendPacket(getViewersAsAudience(), packet);
             PacketUtils.sendPacket(getViewersAsAudience(), ParticleCreator.createParticlePacket(Particle.LAVA,
-                    newPos.x() + .5, newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 10));
+                    newPos.x(), newPos.y() + .5, newPos.z(), 0, 0, 0, 10));
             int id = getInstance().getBlock(newPos).id();
             if (id != Block.AIR.id() && id != Block.BARRIER.id()) {
                 if (id == Block.BRICKS.id()) {

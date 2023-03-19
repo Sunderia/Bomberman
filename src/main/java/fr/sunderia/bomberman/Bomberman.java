@@ -141,7 +141,7 @@ public class Bomberman extends Extension {
             if(e.getBlock().id() != Block.TNT.id()) return;
             e.setCancelled(true);
             Player player = e.getPlayer();
-            if(player.getGameMode() != GameMode.ADVENTURE) return;
+            if(player.getGameMode() != GameMode.ADVENTURE && player.getGameMode() != GameMode.CREATIVE) return;
             Block blockBelow = player.getInstance().getBlock(e.getBlockPosition().sub(0, 1, 0));
             if(blockBelow.id() != Block.STONE.id() || player.getInstance().getBlock(e.getBlockPosition().add(0, 1, 0)).isSolid()) return;
             if(Cooldown.isInCooldown(e.getPlayer().getUuid(), "tnt")) return;
@@ -149,13 +149,15 @@ public class Bomberman extends Extension {
             e.getPlayer().sendPacket(new SetCooldownPacket(Material.TNT.id(), 0));
             e.consumeBlock(false);
             e.setBlock(Block.BARRIER);
-            final int timeInSeconds = 1;
-            Cooldown c = new Cooldown(e.getPlayer().getUuid(), "tnt", timeInSeconds);
-            c.start();
-            SetCooldownPacket packet = new SetCooldownPacket(Material.TNT.id(), timeInSeconds * 20);
+            if(player.getGameMode() == GameMode.ADVENTURE) {
+                final int timeInSeconds = 1;
+                Cooldown c = new Cooldown(e.getPlayer().getUuid(), "tnt", timeInSeconds);
+                c.start();
+                SetCooldownPacket packet = new SetCooldownPacket(Material.TNT.id(), timeInSeconds * 20);
+                e.getPlayer().sendPacket(packet);
+            }
             PrimedTntEntity tnt = new PrimedTntEntity(e.getPlayer());
             tnt.setInstance(e.getInstance(), e.getBlockPosition().add(0.5d, 0, 0.5d));
-            e.getPlayer().sendPacket(packet);
         });
 
         extensionNode.addListener(PickupItemEvent.class, event -> {
