@@ -1,5 +1,7 @@
 package fr.sunderia.bomberman;
 
+import net.minestom.server.entity.Player;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -14,7 +16,7 @@ public class Cooldown {
 
     /**
      *
-     * @param id Player's UUID {@link org.bukkit.entity.Player#getUniqueId()}
+     * @param id Player's UUID {@link Player#getUuid()}
      * @param cooldownName Name of the cooldown
      * @param timeInSeconds Time in seconds
      */
@@ -25,7 +27,7 @@ public class Cooldown {
     }
 
     /**
-     * @param id Player's UUID {@link org.bukkit.entity.Player#getUniqueId()}
+     * @param id Player's UUID {@link Player#getUuid()}
      * @param cooldownName Name of the cooldown
      * @return True if the cooldown is running
      */
@@ -40,7 +42,7 @@ public class Cooldown {
 
     /**
      * Stop the cooldown
-     * @param id Player's UUID {@link org.bukkit.entity.Player#getUniqueId()}
+     * @param id Player's UUID {@link Player#getUuid()}
      * @param cooldownName Name of the cooldown
      */
     private static void stop(UUID id, String cooldownName) {
@@ -48,7 +50,7 @@ public class Cooldown {
     }
 
     /**
-     * @param id The player's UUID {@link org.bukkit.entity.Player#getUniqueId()}
+     * @param id The player's UUID {@link Player#getUuid()}
      * @param cooldownName The name of the cooldown
      * @return An instance of {@link Cooldown} from {@link Cooldown#cooldowns}
      * @throws NullPointerException if the cooldown doesn't exist
@@ -58,7 +60,7 @@ public class Cooldown {
     }
 
     /**
-     * @param id Player's UUID {@link org.bukkit.entity.Player#getUniqueId()}
+     * @param id Player's UUID {@link Player#getUuid()}
      * @param cooldownName Name of the cooldown
      * @return Time left in seconds
      */

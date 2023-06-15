@@ -1,18 +1,16 @@
 package fr.sunderia.bomberman;
 
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Consumer;
-
 import net.minestom.server.attribute.Attribute;
 import net.minestom.server.attribute.AttributeInstance;
 import net.minestom.server.attribute.AttributeModifier;
 import net.minestom.server.attribute.AttributeOperation;
 import net.minestom.server.entity.Player;
 
+import java.util.function.Consumer;
+
 enum Powerup {
     FIRE_UP(p -> incrementPower(p, 1)),
-    FULL_FIRE(p -> Bomberman.powerMap.put(p.getUuid(), 8)),
+    FULL_FIRE(p -> Bomberman.Companion.getPowerMap().put(p.getUuid(), 8)),
     FIRE_DOWN(p -> incrementPower(p, -1)),
     //MAX SPEED .1f
     SPEED_UP(p -> incrementSpeed(p, 0.1f / 8)),
@@ -36,7 +34,7 @@ enum Powerup {
     }
 
     private static void incrementPower(Player p, int increment) {
-        int currentPower = Bomberman.powerMap.get(p.getUuid());
-        Bomberman.powerMap.put(p.getUuid(), Math.min(Math.max(currentPower + increment, 1), 8));
+        int currentPower = Bomberman.Companion.getPowerMap().get(p.getUuid());
+        Bomberman.Companion.getPowerMap().put(p.getUuid(), Math.min(Math.max(currentPower + increment, 1), 8));
     }
 }

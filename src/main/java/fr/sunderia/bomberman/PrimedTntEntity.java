@@ -1,14 +1,11 @@
 package fr.sunderia.bomberman;
 
+import kotlin.random.Random;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.coordinate.Pos;
-import net.minestom.server.entity.Entity;
-import net.minestom.server.entity.EntityType;
-import net.minestom.server.entity.GameMode;
-import net.minestom.server.entity.ItemEntity;
-import net.minestom.server.entity.Player;
+import net.minestom.server.entity.*;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -18,7 +15,7 @@ import net.minestom.server.particle.Particle;
 import net.minestom.server.particle.ParticleCreator;
 import net.minestom.server.utils.PacketUtils;
 
-import static fr.sunderia.bomberman.Bomberman.random;
+import java.util.Objects;
 
 /**
  * @author <a href=
@@ -28,7 +25,7 @@ public class PrimedTntEntity extends Entity {
 
     private int fuseTime = 80;
     // Bomb has been planted
-    private Player player;
+    private final Player player;
     private final Sound tntHiss = Sound.sound(Key.key("entity.tnt.primed"), Sound.Source.BLOCK, 1f, 1f);
     private final Sound explosionSound = Sound.sound(Key.key("entity.generic.explode"), Sound.Source.BLOCK, 1f, 1f);
     private Pos spawnPos;
@@ -44,7 +41,7 @@ public class PrimedTntEntity extends Entity {
         Pos pos = getPosition();
         for (int x = 0; (negative ? x >= -power : x <= power); x += negative ? -1 : 1) {
             Pos newPos = pos.add(isX ? x : 0, 0, isX ? 0 : x);
-            getInstance().getPlayers().stream().filter(
+            Objects.requireNonNull(getInstance()).getPlayers().stream().filter(
                     p -> p.getPosition().sameBlock(newPos) && !p.isDead() && p.getGameMode() == GameMode.ADVENTURE)
                     .forEach(player -> {
                         DamageType damageType = new DamageType("attack.explosion");
@@ -77,18 +74,18 @@ public class PrimedTntEntity extends Entity {
     }
 
     private void dropPowerup(Pos pos) {
-        if (random.nextInt(4) != 0)
+        if (Random.Default.nextInt(4) != 0)
             return;
-        int index = random.nextInt(Powerup.values().length);
+        int index = Random.Default.nextInt(Powerup.values().length);
         Powerup powerup = Powerup.values()[index];
         ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).withMeta(meta -> meta.customModelData(index + 1)
                 .displayName(Component.text(powerup.name().replace("_", " ").toLowerCase())));
         ItemEntity item = new ItemEntity(is);
-        item.setInstance(getInstance(), pos);
+        item.setInstance(Objects.requireNonNull(getInstance()), pos);
     }
 
     private void explode() {
-        int power = Bomberman.powerMap.getOrDefault(player.getUuid(), 2);
+        int power = Bomberman.Companion.getPowerMap().getOrDefault(player.getUuid(), 2);
         super.getViewersAsAudience().playSound(explosionSound);
         breakBlocks(power, true, false);
         breakBlocks(power, true, true);
@@ -112,7 +109,7 @@ public class PrimedTntEntity extends Entity {
         if (--fuseTime != 0)
             return;
         explode();
-        getInstance().setBlock(this.spawnPos, Block.AIR);
+        Objects.requireNonNull(getInstance()).setBlock(this.spawnPos, Block.AIR);
         remove();
     }
 }

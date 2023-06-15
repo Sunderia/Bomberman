@@ -10,7 +10,8 @@
 			}
 		],
 		"artifacts": [
-			"commons-codec:commons-codec:1.15"
+			"commons-codec:commons-codec:1.15",
+			"org.jetbrains.kotlin:kotlin-stdlib:1.8.0"
 		]
 	}
 }
