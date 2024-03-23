@@ -5,6 +5,8 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap
 import net.kyori.adventure.key.Key
+import net.kyori.adventure.resource.ResourcePackInfo
+import net.kyori.adventure.resource.ResourcePackRequest
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.format.NamedTextColor
@@ -18,23 +20,18 @@ import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
-import net.minestom.server.event.Event
-import net.minestom.server.event.EventNode
 import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
-import net.minestom.server.extensions.Extension
 import net.minestom.server.extras.lan.OpenToLAN
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.InstanceManager
 import net.minestom.server.instance.batch.AbsoluteBlockBatch
-import net.minestom.server.instance.batch.ChunkBatch
 import net.minestom.server.instance.block.Block
 import net.minestom.server.instance.generator.GenerationUnit
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.network.packet.server.play.SetCooldownPacket
-import net.minestom.server.resourcepack.ResourcePack
 import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.NamespaceID
 import net.minestom.server.utils.chunk.ChunkUtils
@@ -47,24 +44,34 @@ import java.io.IOException
 import java.net.URI
 import java.util.*
 import java.util.function.Consumer
+import java.util.logging.Level
+import java.util.logging.Logger
 import java.util.stream.IntStream
 import kotlin.random.Random
 
-class Bomberman : Extension() {
+fun main() {
+    val game = Bomberman()
+    val mc = MinecraftServer.init()
+    game.initialize()
+    mc.start("0.0.0.0", 25565)
+    game.terminate()
+}
+
+class Bomberman {
 
     private var resourcePackSha1: String? = null
 
     companion object {
         val powerMap = mutableMapOf<UUID, Int>()
         private val gson = GsonBuilder().create()
+        val logger: Logger = Logger.getLogger("Bomberman")
     }
 
-    override fun initialize() {
+    fun initialize() {
         val manager = MinecraftServer.getInstanceManager()
         val container: InstanceContainer = createInstanceContainer(manager)
-        val extensionNode = eventNode
         OpenToLAN.open()
-        registerListeners(extensionNode, container)
+        registerListeners(container)
 
         try {
             ByteArrayOutputStream().use { os ->
@@ -74,13 +81,15 @@ class Bomberman : Extension() {
                 }
             }
         } catch (e: IOException) {
-            logger.error(Component.text("Couldn't get the SHA1 of the Resource Pack"), e)
+            logger.log(Level.SEVERE, e) { "Couldn't get the SHA1 of the Resource Pack" }
         }
+        logger.info("Bomberman starting")
     }
 
-    private fun registerListeners(extensionNode: EventNode<Event>, container: InstanceContainer) {
+    private fun registerListeners(container: InstanceContainer) {
         val spawn = Pos(.0, 45.0, .0)
-        extensionNode.addListener(PlayerLoginEvent::class.java) { it.setSpawningInstance(container) }
+        val extensionNode = MinecraftServer.getGlobalEventHandler()
+        extensionNode.addListener(AsyncPlayerConfigurationEvent::class.java) { it.spawningInstance = container }
 
         extensionNode.addListener(PlayerChatEvent::class.java) {
             val gameMode = GameMode.values().find { gm -> it.message.uppercase().contains(gm.name) } ?: return@addListener
@@ -113,7 +122,10 @@ class Bomberman : Extension() {
                         Component.text(": ${powerMap[player.uuid]}")
                     ).style { it.font(Key.key("default")) })
             }, TaskSchedule.immediate(), TaskSchedule.tick(10))
-            player.setResourcePack(ResourcePack.forced("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip", resourcePackSha1))
+            player.sendResourcePacks(ResourcePackRequest.resourcePackRequest().packs(ResourcePackInfo.resourcePackInfo()
+                    .hash(resourcePackSha1!!)
+                    .uri(URI.create("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip"))
+            ))
         }
 
 
@@ -277,7 +289,7 @@ class Bomberman : Extension() {
         return try {
             val field = batch.javaClass.getDeclaredField("chunkBatchesMap")
             field.isAccessible = true
-            val chunkBatchesMap = field[batch] as Long2ObjectMap<ChunkBatch>
+            val chunkBatchesMap = field[batch] as Long2ObjectMap<*>
             chunkBatchesMap.keys.toLongArray()
         } catch (e: NoSuchFieldException) {
             throw RuntimeException(e)
@@ -286,6 +298,7 @@ class Bomberman : Extension() {
         }
     }
 
+    fun terminate() {
 
-    override fun terminate() {}
+    }
 }

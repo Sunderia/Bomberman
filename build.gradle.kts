@@ -1,7 +1,9 @@
 plugins {
     java
     eclipse
+    application
     kotlin("jvm") version "1.8.22"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 repositories {
@@ -10,8 +12,14 @@ repositories {
 }
 
 dependencies {
-	compileOnly("com.github.Minestom.Minestom:Minestom:954e8b3915")
-    compileOnly("commons-codec:commons-codec:1.15")
+	implementation("net.minestom:minestom-snapshots:7320437640")
+    implementation("commons-codec:commons-codec:1.16.1")
+}
+
+val mainClassPath = "fr.sunderia.bomberman.BombermanKt"
+
+application {
+    mainClass.set(mainClassPath)
 }
 
 java {
@@ -22,4 +30,11 @@ java {
 
 kotlin {
     jvmToolchain(17)
+}
+
+tasks.withType<Jar> {
+    manifest {
+        // Change this to your main class
+        attributes["Main-Class"] = mainClassPath
+    }
 }

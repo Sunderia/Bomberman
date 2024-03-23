@@ -6,7 +6,6 @@ import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.*;
-import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -30,6 +29,10 @@ public class PrimedTntEntity extends Entity {
     private final Sound explosionSound = Sound.sound(Key.key("entity.generic.explode"), Sound.Source.BLOCK, 1f, 1f);
     private Pos spawnPos;
 
+    public Player getPlayer() {
+        return player;
+    }
+
     public PrimedTntEntity(Player player) {
         super(EntityType.TNT);
         this.player = player;
@@ -44,8 +47,7 @@ public class PrimedTntEntity extends Entity {
             Objects.requireNonNull(getInstance()).getPlayers().stream().filter(
                     p -> p.getPosition().sameBlock(newPos) && !p.isDead() && p.getGameMode() == GameMode.ADVENTURE)
                     .forEach(player -> {
-                        DamageType damageType = new DamageType("attack.explosion");
-                        player.damage(damageType, 100f);
+                        player.damage(new CustomDamage(this));
                         player.kill();
                     });
             getInstance().getEntities().stream().filter(e -> e.getPosition().sameBlock(newPos)).filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity).forEach(entity -> {
