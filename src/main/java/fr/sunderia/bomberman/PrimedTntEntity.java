@@ -11,7 +11,6 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
-import net.minestom.server.particle.ParticleCreator;
 import net.minestom.server.utils.PacketUtils;
 
 import java.util.Objects;
@@ -36,7 +35,8 @@ public class PrimedTntEntity extends Entity {
     public PrimedTntEntity(Player player) {
         super(EntityType.TNT);
         this.player = player;
-        setGravity(.3f, getGravityAcceleration());
+        //they removed gravity
+        //setGravity(.3f, getGravityAcceleration());
         setBoundingBox(1, 1, 1);
     }
 
@@ -57,11 +57,11 @@ public class PrimedTntEntity extends Entity {
                 }
                 ((PrimedTntEntity) entity).setFuseTime(1);
             });
-            ParticlePacket packet = ParticleCreator.createParticlePacket(Particle.SMOKE, newPos.x() + .5,
-                    newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 10);
+            ParticlePacket packet = new ParticlePacket(Particle.SMOKE, newPos.x() + .5,
+                    newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 0, 10);
             PacketUtils.sendPacket(getViewersAsAudience(), packet);
-            PacketUtils.sendPacket(getViewersAsAudience(), ParticleCreator.createParticlePacket(Particle.LAVA,
-                    newPos.x(), newPos.y() + .5, newPos.z(), 0, 0, 0, 10));
+            PacketUtils.sendPacket(getViewersAsAudience(), new ParticlePacket(Particle.LAVA,
+                    newPos.x(), newPos.y() + .5, newPos.z(), 0, 0, 0, 0, 10));
             int id = getInstance().getBlock(newPos).id();
             if (id != Block.AIR.id() && id != Block.BARRIER.id()) {
                 if (id == Block.BRICKS.id()) {

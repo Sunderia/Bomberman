@@ -3,6 +3,7 @@ package fr.sunderia.bomberman
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import fr.sunderia.bomberman.party.PartyCommand
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.resource.ResourcePackInfo
@@ -20,6 +21,7 @@ import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
+import net.minestom.server.event.EventNode
 import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.extras.lan.OpenToLAN
@@ -32,6 +34,7 @@ import net.minestom.server.instance.generator.GenerationUnit
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.network.packet.server.play.SetCooldownPacket
+import net.minestom.server.tag.Tag
 import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.NamespaceID
 import net.minestom.server.utils.chunk.ChunkUtils
@@ -69,9 +72,11 @@ class Bomberman {
 
     fun initialize() {
         val manager = MinecraftServer.getInstanceManager()
-        val container: InstanceContainer = createInstanceContainer(manager)
+        val lobbyContainer: InstanceContainer = createInstanceContainer(manager)
         OpenToLAN.open()
-        registerListeners(container)
+        //MojangAuth.init()
+        registerListeners(lobbyContainer)
+        MinecraftServer.getCommandManager().register(PartyCommand())
 
         try {
             ByteArrayOutputStream().use { os ->
@@ -89,25 +94,30 @@ class Bomberman {
     private fun registerListeners(container: InstanceContainer) {
         val spawn = Pos(.0, 45.0, .0)
         val extensionNode = MinecraftServer.getGlobalEventHandler()
+        val lobbyNode = EventNode.all("lobby")
+        val gameNode = EventNode.all("game")
         extensionNode.addListener(AsyncPlayerConfigurationEvent::class.java) { it.spawningInstance = container }
+        //extensionNode.addListener(PlayerSkinInitEvent::class.java) { it.skin = PlayerSkin.fromUuid(it.player.uuid.toString()) }
 
         extensionNode.addListener(PlayerChatEvent::class.java) {
-            val gameMode = GameMode.values().find { gm -> it.message.uppercase().contains(gm.name) } ?: return@addListener
+            val gameMode = GameMode.entries.find { gm -> it.message.uppercase().contains(gm.name) } ?: return@addListener
             it.isCancelled = true
             it.player.gameMode = gameMode
         }
 
-        extensionNode.addListener(PickupItemEvent::class.java) {
+        gameNode.addListener(PickupItemEvent::class.java) {
+            if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
             if (it.livingEntity !is Player || it.itemStack.material().id() != Material.NAUTILUS_SHELL.id()) return@addListener
             val player = it.entity as Player
             if (player.gameMode != GameMode.ADVENTURE) {
                 it.isCancelled = true
                 return@addListener
             }
-            Powerup.values()[it.itemStack.meta().customModelData - 1].effect.accept(player)
+            Powerup.entries[it.itemStack.meta().customModelData - 1].effect.accept(player)
         }
 
-        extensionNode.addListener(PlayerSpawnEvent::class.java) {
+        gameNode.addListener(PlayerSpawnEvent::class.java) {
+            //if(!it.spawnInstance.hasTag(Tag.Boolean("game"))) return@addListener
             val player = it.player
             player.gameMode = GameMode.ADVENTURE
             player.teleport(spawn)
@@ -129,7 +139,8 @@ class Bomberman {
         }
 
 
-        extensionNode.addListener(PlayerDeathEvent::class.java) {
+        gameNode.addListener(PlayerDeathEvent::class.java) {
+            if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
             val player = it.player
             player.gameMode = GameMode.SPECTATOR
             val playerAlive = player.instance!!.players.filter { it.gameMode == GameMode.ADVENTURE }.toList()
@@ -149,7 +160,8 @@ class Bomberman {
             resetGame(winner.instance)
         }
 
-        extensionNode.addListener(PlayerBlockPlaceEvent::class.java) {
+        gameNode.addListener(PlayerBlockPlaceEvent::class.java) {
+            if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
             if(it.block.id() != Block.TNT.id()) return@addListener
             it.isCancelled = true
 
@@ -175,6 +187,9 @@ class Bomberman {
             val tnt = PrimedTntEntity(it.player)
             tnt.setInstance(it.player.instance!!, it.blockPosition.add(0.5, 0.0, 0.5))
         }
+
+        extensionNode.addChild(lobbyNode)
+        extensionNode.addChild(gameNode)
     }
 
     private fun createInstanceContainer(manager: InstanceManager): InstanceContainer {
@@ -184,6 +199,12 @@ class Bomberman {
         container.setGenerator { unit: GenerationUnit ->
             unit.modifier().fillHeight(0, 40, Block.STONE)
         }
+        return container
+    }
+
+    private fun createGameInstance(manager: InstanceManager): InstanceContainer {
+        val container = createInstanceContainer(manager)
+        container.setTag(Tag.Boolean("game"), true)
         generateStructure(container)
         return container
     }

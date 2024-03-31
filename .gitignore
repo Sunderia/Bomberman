@@ -10,5 +10,4 @@ debug
 .project
 .settings
 /.idea/
-.devcontainer.json
 .vscode

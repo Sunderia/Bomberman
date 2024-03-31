@@ -33,8 +33,8 @@ enum Powerup {
         currentAttribute.addModifier(new AttributeModifier("speed", amount, AttributeOperation.ADDITION));
     }
 
+    @SuppressWarnings("DataFlowIssue")
     private static void incrementPower(Player p, int increment) {
-        int currentPower = Bomberman.Companion.getPowerMap().get(p.getUuid());
-        Bomberman.Companion.getPowerMap().put(p.getUuid(), Math.min(Math.max(currentPower + increment, 1), 8));
+        Bomberman.Companion.getPowerMap().compute(p.getUuid(), (k, currentPower) -> Math.min(Math.max(currentPower + increment, 1), 8));
     }
 }

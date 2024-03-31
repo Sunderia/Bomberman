@@ -1,9 +1,11 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     java
     eclipse
     application
-    kotlin("jvm") version "1.8.22"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    kotlin("jvm") version "1.9.20"
+    id("io.github.goooler.shadow") version "8.1.7"
 }
 
 repositories {
@@ -12,7 +14,7 @@ repositories {
 }
 
 dependencies {
-	implementation("net.minestom:minestom-snapshots:7320437640")
+	implementation("net.minestom:minestom-snapshots:63f02929ed")
     implementation("commons-codec:commons-codec:1.16.1")
 }
 
@@ -24,12 +26,16 @@ application {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
+}
+
+tasks.withType<ShadowJar> {
+    minimize()
 }
 
 tasks.withType<Jar> {
