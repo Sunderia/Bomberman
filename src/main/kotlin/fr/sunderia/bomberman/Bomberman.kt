@@ -111,8 +111,11 @@ class Bomberman {
             Party.removePlayerFromParty(it.player)
             val instance = it.instance
             if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
-            if(instance.players.none { p -> p.uuid != it.player.uuid }) {
+            val filter = instance.players.filter { p -> p.uuid != it.player.uuid }
+            if(filter.isEmpty()) {
                 Game.removeGame(instance)
+            } else if(filter.filter { p -> p.gameMode == GameMode.ADVENTURE }.size == 1 ) {
+               Game.playerLeft(instance)
             }
         }
 
@@ -180,17 +183,7 @@ class Bomberman {
             winner.sendTitlePart(TitlePart.TITLE, Component.text("You won", NamedTextColor.GREEN))
             winner.teleport(spawn)
             val game = Game.getGame(event.instance)!!
-            game.gameStatus = GameStatus.ENDING
-            MinecraftServer.getSchedulerManager().submitTask {
-                if (game.getTimeLeft() == 0) {
-                    resetGame(event.instance)
-                    game.endGame()
-                    return@submitTask TaskSchedule.stop()
-                }
-                game.instance.players.forEach { it.sendMessage(Component.text("Closing in ").append(Component.text(game.getTimeLeft()).color(NamedTextColor.RED))) }
-                game.decreaseTime()
-                return@submitTask TaskSchedule.seconds(1)
-            }
+            game.endGame()
         }
 
         gameNode.addListener(PlayerBlockPlaceEvent::class.java) {
@@ -222,25 +215,6 @@ class Bomberman {
 
         extensionNode.addChild(lobbyNode)
         extensionNode.addChild(gameNode)
-    }
-
-    private fun resetGame(instance: Instance) {
-        powerMap.replaceAll { _: UUID, _: Int -> 2 }
-        instance.players.forEach(Consumer { p: Player ->
-            p.clearEffects()
-            val uuids =
-                p.getAttribute(Attribute.MOVEMENT_SPEED).modifiers.stream()
-                    .map { obj: AttributeModifier -> obj.id }
-                    .toList().toTypedArray()
-            for (uuid in uuids) {
-                p.getAttribute(Attribute.MOVEMENT_SPEED).removeModifier(uuid!!)
-            }
-        })
-        instance.entities.stream()
-            .filter { e: Entity ->
-                e.entityType.id() == EntityType.TNT.id() || e.entityType.id() == EntityType.ITEM.id()
-            }
-            .forEach { obj: Entity -> obj.remove() }
     }
 
     fun terminate() {
