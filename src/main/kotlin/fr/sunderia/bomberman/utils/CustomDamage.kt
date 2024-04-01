@@ -1,5 +1,6 @@
-package fr.sunderia.bomberman
+package fr.sunderia.bomberman.utils
 
+import fr.sunderia.bomberman.PrimedTntEntity
 import net.kyori.adventure.text.Component
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.damage.Damage

@@ -1,4 +1,4 @@
-package fr.sunderia.bomberman
+package fr.sunderia.bomberman.utils
 
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.instance.block.Block

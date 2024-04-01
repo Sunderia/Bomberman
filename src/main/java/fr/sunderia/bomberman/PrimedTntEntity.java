@@ -1,19 +1,20 @@
 package fr.sunderia.bomberman;
 
+import fr.sunderia.bomberman.utils.CustomDamage;
 import kotlin.random.Random;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
+import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.*;
+import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.utils.PacketUtils;
-
-import java.util.Objects;
 
 /**
  * @author <a href=
@@ -32,11 +33,10 @@ public class PrimedTntEntity extends Entity {
         return player;
     }
 
-    public PrimedTntEntity(Player player) {
+    public PrimedTntEntity(Player player, Instance instance, Point pos) {
         super(EntityType.TNT);
         this.player = player;
-        //they removed gravity
-        //setGravity(.3f, getGravityAcceleration());
+        this.setInstance(instance, pos);
         setBoundingBox(1, 1, 1);
     }
 
@@ -44,19 +44,22 @@ public class PrimedTntEntity extends Entity {
         Pos pos = getPosition();
         for (int x = 0; (negative ? x >= -power : x <= power); x += negative ? -1 : 1) {
             Pos newPos = pos.add(isX ? x : 0, 0, isX ? 0 : x);
-            Objects.requireNonNull(getInstance()).getPlayers().stream().filter(
+            getInstance().getPlayers().stream().filter(
                     p -> p.getPosition().sameBlock(newPos) && !p.isDead() && p.getGameMode() == GameMode.ADVENTURE)
                     .forEach(player -> {
                         player.damage(new CustomDamage(this));
                         player.kill();
                     });
-            getInstance().getEntities().stream().filter(e -> e.getPosition().sameBlock(newPos)).filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity).forEach(entity -> {
-                if(entity.getEntityType().id() == EntityType.ITEM.id()) {
-                    entity.remove();
-                    return;
-                }
-                ((PrimedTntEntity) entity).setFuseTime(1);
-            });
+            getInstance().getEntities().stream()
+                    .filter(e -> e.getPosition().sameBlock(newPos))
+                    .filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity)
+                    .forEach(entity -> {
+                        if(!(entity instanceof PrimedTntEntity tnt)) {
+                            entity.remove();
+                            return;
+                        }
+                        tnt.setFuseTime(1);
+                    });
             ParticlePacket packet = new ParticlePacket(Particle.SMOKE, newPos.x() + .5,
                     newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 0, 10);
             PacketUtils.sendPacket(getViewersAsAudience(), packet);
@@ -83,7 +86,7 @@ public class PrimedTntEntity extends Entity {
         ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).withMeta(meta -> meta.customModelData(index + 1)
                 .displayName(Component.text(powerup.name().replace("_", " ").toLowerCase())));
         ItemEntity item = new ItemEntity(is);
-        item.setInstance(Objects.requireNonNull(getInstance()), pos);
+        item.setInstance(getInstance(), pos);
     }
 
     private void explode() {
@@ -111,7 +114,7 @@ public class PrimedTntEntity extends Entity {
         if (--fuseTime != 0)
             return;
         explode();
-        Objects.requireNonNull(getInstance()).setBlock(this.spawnPos, Block.AIR);
+        getInstance().setBlock(this.spawnPos, Block.AIR);
         remove();
     }
 }
