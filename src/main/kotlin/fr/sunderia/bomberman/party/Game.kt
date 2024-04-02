@@ -4,6 +4,7 @@ import fr.sunderia.bomberman.Bomberman
 import fr.sunderia.bomberman.Bomberman.Companion.powerMap
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
 import fr.sunderia.bomberman.InstanceCreator.Companion.generateStructure
+import fr.sunderia.bomberman.utils.PowerupTags
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
@@ -70,13 +71,13 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
         powerMap.replaceAll { _: UUID, _: Int -> 2 }
         instance.players.forEach { p: Player ->
             p.clearEffects()
-            val uuids =
-                p.getAttribute(Attribute.MOVEMENT_SPEED).modifiers.stream()
+            val uuids = p.getAttribute(Attribute.MOVEMENT_SPEED).modifiers.stream()
                     .map { obj: AttributeModifier -> obj.id }
                     .toList().toTypedArray()
             for (uuid in uuids) {
                 p.getAttribute(Attribute.MOVEMENT_SPEED).removeModifier(uuid!!)
             }
+            p.removeTag(PowerupTags.BOXING_GLOVE.tag)
         }
         instance.entities.stream()
             .filter { e: Entity ->

@@ -83,6 +83,9 @@ public class PrimedTntEntity extends Entity {
             return;
         int index = Random.Default.nextInt(Powerup.values().length);
         Powerup powerup = Powerup.values()[index];
+        if(powerup == Powerup.BOXING_GLOVE) {
+            Bomberman.Companion.getLogger().info("Spawned boxing glove");
+        }
         ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).withMeta(meta -> meta.customModelData(index + 1)
                 .displayName(Component.text(powerup.name().replace("_", " ").toLowerCase())));
         ItemEntity item = new ItemEntity(is);
@@ -114,7 +117,7 @@ public class PrimedTntEntity extends Entity {
         if (--fuseTime != 0)
             return;
         explode();
-        getInstance().setBlock(this.spawnPos, Block.AIR);
+        getInstance().setBlock(this.position, Block.AIR);
         remove();
     }
 }
