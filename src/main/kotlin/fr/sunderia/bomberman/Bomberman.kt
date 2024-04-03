@@ -189,10 +189,10 @@ class Bomberman {
                         Component.text(": ${powerMap[player.uuid]}")
                     ).style { it.font(Key.key("default")) })
             }, TaskSchedule.immediate(), TaskSchedule.tick(10))
-            /*player.sendResourcePacks(ResourcePackRequest.resourcePackRequest().packs(ResourcePackInfo.resourcePackInfo()
+            player.sendResourcePacks(ResourcePackRequest.resourcePackRequest().packs(ResourcePackInfo.resourcePackInfo()
                     .hash(resourcePackSha1!!)
                     .uri(URI.create("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip"))
-            ))*/
+            ))
         }
 
 
