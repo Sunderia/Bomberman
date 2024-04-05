@@ -9,7 +9,6 @@ import fr.sunderia.bomberman.party.Party
 import fr.sunderia.bomberman.party.PartyCommand
 import fr.sunderia.bomberman.utils.Axis
 import fr.sunderia.bomberman.utils.Cooldown
-import fr.sunderia.bomberman.utils.PositionUtils
 import fr.sunderia.bomberman.utils.PositionUtils.Companion.removeBlockAt
 import fr.sunderia.bomberman.utils.PositionUtils.Companion.setBlockAt
 import fr.sunderia.bomberman.utils.PowerupTags
@@ -39,6 +38,7 @@ import net.minestom.server.network.NetworkBuffer
 import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket
 import net.minestom.server.network.packet.server.play.SetCooldownPacket
+import net.minestom.server.scoreboard.TeamBuilder
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.NamespaceID
@@ -51,6 +51,7 @@ import java.net.URI
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
+
 
 fun main() {
     val game = Bomberman()
@@ -86,6 +87,8 @@ class Bomberman {
         commandManager.register(PartyCommand())
         commandManager.register(GameCommand())
 
+        PrimedTntEntity.pierceTeam = TeamBuilder("Pierce TNT", MinecraftServer.getTeamManager()).teamColor(NamedTextColor.AQUA).build()
+
         try {
             ByteArrayOutputStream().use { os ->
                 URI.create("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip").toURL().openStream().use { input ->
@@ -99,6 +102,7 @@ class Bomberman {
         logger.info("Bomberman starting")
     }
 
+    @Suppress("UnstableApiUsage", "NestedLambdaShadowedImplicitParameter")
     private fun registerListeners(container: InstanceContainer) {
         val spawn = Pos(.0, 45.0, .0)
         val extensionNode = MinecraftServer.getGlobalEventHandler()
@@ -128,7 +132,9 @@ class Bomberman {
         MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerDiggingPacket::class.java) { packet: ClientPlayerDiggingPacket, player: Player ->
             val instance = player.instance
             if(player.gameMode != GameMode.ADVENTURE || packet.status != ClientPlayerDiggingPacket.Status.STARTED_DIGGING) return@setPlayListener PlayerDiggingListener.playerDiggingListener(packet, player)
-            if(!player.hasTag(PowerupTags.BOXING_GLOVE.tag)) return@setPlayListener
+            logger.info("Digging")
+            if(!player.hasTag(PowerupTags.BOXING_GLOVE.getBool())) return@setPlayListener
+            logger.info("Has effect: ")
             if(!instance.getBlock(packet.blockPosition).compare(Block.BARRIER)) return@setPlayListener
             if(packet.blockFace == BlockFace.TOP || packet.blockFace == BlockFace.BOTTOM) return@setPlayListener
             val tnt = instance.entities
@@ -195,7 +201,6 @@ class Bomberman {
             ))
         }
 
-
         gameNode.addListener(PlayerDeathEvent::class.java) { event ->
             if(!event.instance.hasTag(Tag.Boolean("game"))) return@addListener
             val player = event.player
@@ -238,13 +243,16 @@ class Bomberman {
             it.block = Block.BARRIER
 
             if (player.gameMode == GameMode.ADVENTURE) {
-                val timeInSeconds = 1
+                val timeInSeconds = 2
                 val c = Cooldown(it.player.uuid, "tnt", timeInSeconds)
                 c.start()
                 val packet = SetCooldownPacket(Material.TNT.id(), timeInSeconds * 20)
                 it.player.playerConnection.sendPacket(packet)
             }
-            PrimedTntEntity(it.player, it.instance, it.blockPosition.add(0.5, 0.0, 0.5))
+            val tnt = PrimedTntEntity(it.player, it.instance, it.blockPosition.add(0.5, 0.0, 0.5))
+            if(player.hasTag(PowerupTags.PIERCE.getBool())) {
+                tnt.setPierce(true)
+            }
         }
 
         extensionNode.addChild(lobbyNode)

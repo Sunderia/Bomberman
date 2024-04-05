@@ -14,6 +14,7 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
+import net.minestom.server.scoreboard.Team;
 import net.minestom.server.utils.PacketUtils;
 
 /**
@@ -27,7 +28,8 @@ public class PrimedTntEntity extends Entity {
     private final Player player;
     private final Sound tntHiss = Sound.sound(Key.key("entity.tnt.primed"), Sound.Source.BLOCK, 1f, 1f);
     private final Sound explosionSound = Sound.sound(Key.key("entity.generic.explode"), Sound.Source.BLOCK, 1f, 1f);
-    private Pos spawnPos;
+    private boolean pierce;
+    public static Team pierceTeam;
 
     public Player getPlayer() {
         return player;
@@ -73,7 +75,8 @@ public class PrimedTntEntity extends Entity {
                     if (getInstance().getBlock(newPos.add(0, 1, 0)).id() == Block.BARRIER.id())
                         getInstance().setBlock(newPos.add(0, 1, 0), Block.AIR);
                 }
-                break;
+                if(!isAPierceBomb()) break;
+                if(id == Block.STONE.id()) break;
             }
         }
     }
@@ -83,9 +86,6 @@ public class PrimedTntEntity extends Entity {
             return;
         int index = Random.Default.nextInt(Powerup.values().length);
         Powerup powerup = Powerup.values()[index];
-        if(powerup == Powerup.BOXING_GLOVE) {
-            Bomberman.Companion.getLogger().info("Spawned boxing glove");
-        }
         ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).withMeta(meta -> meta.customModelData(index + 1)
                 .displayName(Component.text(powerup.name().replace("_", " ").toLowerCase())));
         ItemEntity item = new ItemEntity(is);
@@ -108,7 +108,6 @@ public class PrimedTntEntity extends Entity {
     @Override
     public void spawn() {
         super.getViewersAsAudience().playSound(tntHiss);
-        this.spawnPos = getPosition();
     }
 
     @Override
@@ -119,5 +118,16 @@ public class PrimedTntEntity extends Entity {
         explode();
         getInstance().setBlock(this.position, Block.AIR);
         remove();
+        pierceTeam.removeMember(this.uuid.toString());
+    }
+
+    public boolean isAPierceBomb() {
+        return pierce;
+    }
+
+    public void setPierce(boolean pierce) {
+        this.setGlowing(true);
+        pierceTeam.addMember(this.uuid.toString());
+        this.pierce = pierce;
     }
 }

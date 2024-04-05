@@ -6,7 +6,6 @@ import net.minestom.server.attribute.AttributeInstance;
 import net.minestom.server.attribute.AttributeModifier;
 import net.minestom.server.attribute.AttributeOperation;
 import net.minestom.server.entity.Player;
-import net.minestom.server.tag.Tag;
 
 import java.util.function.Consumer;
 
@@ -18,8 +17,13 @@ enum Powerup {
     SPEED_UP(p -> incrementSpeed(p, 0.1f / 8)),
     //MIN SPEED -0.025
     SPEED_DOWN(p -> incrementSpeed(p, -0.025f / 4)),
-    BOXING_GLOVE(p -> p.setTag(PowerupTags.BOXING_GLOVE.getTag(Boolean.class), true))
+    BOXING_GLOVE(p -> setTag(p, PowerupTags.BOXING_GLOVE)),
+    PIERCE(p -> setTag(p, PowerupTags.PIERCE))
     ;
+
+    private static void setTag(Player player, PowerupTags tag) {
+        player.setTag(tag.getBool(), true);
+    }
 
     private final Consumer<Player> effect;
 

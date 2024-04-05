@@ -5,7 +5,6 @@ import fr.sunderia.bomberman.Bomberman.Companion.powerMap
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
 import fr.sunderia.bomberman.InstanceCreator.Companion.generateStructure
 import fr.sunderia.bomberman.utils.PowerupTags
-import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.MinecraftServer
@@ -77,7 +76,9 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
             for (uuid in uuids) {
                 p.getAttribute(Attribute.MOVEMENT_SPEED).removeModifier(uuid!!)
             }
-            p.removeTag(PowerupTags.BOXING_GLOVE.tag)
+            PowerupTags.entries.forEach {
+                p.removeTag(it.getBool())
+            }
         }
         instance.entities.stream()
             .filter { e: Entity ->
