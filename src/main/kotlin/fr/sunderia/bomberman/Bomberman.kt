@@ -56,6 +56,7 @@ import java.util.logging.Logger
 
 fun main() {
     val game = Bomberman()
+    if(System.getenv().containsKey("VELOCITY_SECRET")) VelocityProxy.enable(System.getenv("VELOCITY_SECRET"))
     val mc = MinecraftServer.init()
     game.initialize()
     mc.start("0.0.0.0", 25565)
@@ -83,7 +84,6 @@ class Bomberman {
         lobbyInstance = lobbyContainer
         OpenToLAN.open()
         //MojangAuth.init()
-        if(System.getenv().containsKey("VELOCITY_SECRET")) VelocityProxy.enable(System.getenv("VELOCITY_SECRET"))
         registerListeners(lobbyContainer)
         val commandManager = MinecraftServer.getCommandManager()
         commandManager.register(PartyCommand())
