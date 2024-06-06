@@ -27,6 +27,7 @@ import net.minestom.server.event.EventNode
 import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.extras.lan.OpenToLAN
+import net.minestom.server.extras.velocity.VelocityProxy
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.block.Block
@@ -82,6 +83,7 @@ class Bomberman {
         lobbyInstance = lobbyContainer
         OpenToLAN.open()
         //MojangAuth.init()
+        if(System.getenv().containsKey("VELOCITY_SECRET")) VelocityProxy.enable(System.getenv("VELOCITY_SECRET"))
         registerListeners(lobbyContainer)
         val commandManager = MinecraftServer.getCommandManager()
         commandManager.register(PartyCommand())

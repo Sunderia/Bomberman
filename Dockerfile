@@ -11,6 +11,6 @@ WORKDIR /app
 COPY --from=gradle /gradlebuild/build/libs/bomberman-all.jar .
 
 LABEL authors="minemobs"
-LABEL version="0.1"
+LABEL version="0.1.1"
 EXPOSE 25565
 ENTRYPOINT ["java", "-jar", "/app/bomberman-all.jar"]

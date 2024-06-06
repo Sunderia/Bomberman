@@ -1,6 +1,8 @@
 services:
   bomberman:
-    image: sunderia/bomberman:0.1.0
+    image: sunderia/bomberman:0.1.1
     restart: unless-stopped
+    environment:
+      VELOCITY_SECRET: YOUR_SECRET # if omitted, the server will disable velocity support
     ports:
       - "25566:25565"
