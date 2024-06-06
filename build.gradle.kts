@@ -35,7 +35,7 @@ kotlin {
 }
 
 tasks.withType<ShadowJar> {
-    minimize()
+    //minimize()
 }
 
 tasks.withType<Jar> {

@@ -1,0 +1,6 @@
+services:
+  bomberman:
+    image: sunderia/bomberman:0.1.0
+    restart: unless-stopped
+    ports:
+      - "25566:25565"
