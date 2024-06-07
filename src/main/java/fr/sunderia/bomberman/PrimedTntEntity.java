@@ -118,7 +118,7 @@ public class PrimedTntEntity extends Entity {
         explode();
         getInstance().setBlock(this.position, Block.AIR);
         remove();
-        pierceTeam.removeMember(this.uuid.toString());
+        if(pierceTeam.getMembers().contains(this.uuid.toString())) pierceTeam.removeMember(this.uuid.toString());
     }
 
     public boolean isAPierceBomb() {
