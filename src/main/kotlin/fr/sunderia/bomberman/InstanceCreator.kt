@@ -11,12 +11,11 @@ import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.InstanceManager
 import net.minestom.server.instance.batch.AbsoluteBlockBatch
 import net.minestom.server.instance.block.Block
-import net.minestom.server.instance.generator.GenerationUnit
 import net.minestom.server.utils.chunk.ChunkUtils
 import org.jglrxavpok.hephaistos.nbt.NBTException
 import org.jglrxavpok.hephaistos.nbt.NBTReader
 import java.io.IOException
-import java.util.LinkedList
+import java.util.*
 import java.util.stream.IntStream
 import kotlin.random.Random
 
@@ -24,9 +23,7 @@ class InstanceCreator {
     companion object {
         fun createInstanceContainer(manager: InstanceManager): InstanceContainer {
             val container = manager.createInstanceContainer(Bomberman.fullBright)
-            container.setGenerator { unit: GenerationUnit ->
-                unit.modifier().fillHeight(0, 40, Block.STONE)
-            }
+            container.setGenerator { unit -> unit.modifier().fillHeight(0, 40, Block.STONE) }
             return container
         }
 

@@ -9,6 +9,7 @@ import fr.sunderia.bomberman.party.Party
 import fr.sunderia.bomberman.party.PartyCommand
 import fr.sunderia.bomberman.utils.Axis
 import fr.sunderia.bomberman.utils.Cooldown
+import fr.sunderia.bomberman.utils.NPC
 import fr.sunderia.bomberman.utils.PositionUtils.Companion.removeBlockAt
 import fr.sunderia.bomberman.utils.PositionUtils.Companion.setBlockAt
 import fr.sunderia.bomberman.utils.PowerupTags
@@ -17,6 +18,8 @@ import net.kyori.adventure.resource.ResourcePackInfo
 import net.kyori.adventure.resource.ResourcePackRequest
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.JoinConfiguration
+import net.kyori.adventure.text.event.ClickEvent
+import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.title.TitlePart
 import net.minestom.server.MinecraftServer
@@ -77,11 +80,18 @@ class Bomberman {
         val fullBright: DimensionType = DimensionType.builder(NamespaceID.from("sunderia:full_bright")).ambientLight(2.0f).build()
     }
 
+    private fun createNPC(lobby: Instance) {
+        val npc = NPC(UUID.randomUUID(), "§aPlay Game", interactCallback = { _, event -> GameCommand.startGame(event.player) })
+        npc.setInstance(lobby, Pos(0.0, 45.0, 10.0))
+        npc.setView(180.0F, .0F)
+    }
+
     fun initialize() {
         val manager = MinecraftServer.getInstanceManager()
         MinecraftServer.getDimensionTypeManager().addDimension(fullBright)
         val lobbyContainer: InstanceContainer = createInstanceContainer(manager)
         lobbyInstance = lobbyContainer
+        createNPC(lobbyContainer)
         OpenToLAN.open()
         //MojangAuth.init()
         registerListeners(lobbyContainer)
@@ -130,13 +140,20 @@ class Bomberman {
                Game.playerLeft(instance)
             }
         }
+
+        lobbyNode.addListener(PlayerEntityInteractEvent::class.java) {
+            if(it.instance.hasTag(Tag.Boolean("game"))) return@addListener
+            if(it.target !is NPC) return@addListener
+            if(it.hand != Player.Hand.MAIN) return@addListener
+            (it.target as NPC).onInteract(it)
+        }
         
         MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerDiggingPacket::class.java) { packet: ClientPlayerDiggingPacket, player: Player ->
             val instance = player.instance
             if(player.gameMode != GameMode.ADVENTURE || packet.status != ClientPlayerDiggingPacket.Status.STARTED_DIGGING) return@setPlayListener PlayerDiggingListener.playerDiggingListener(packet, player)
-            logger.info("Digging")
+            //logger.info("Digging")
             if(!player.hasTag(PowerupTags.BOXING_GLOVE.getBool())) return@setPlayListener
-            logger.info("Has effect: ")
+            //logger.info("Has effect: ")
             if(!instance.getBlock(packet.blockPosition).compare(Block.BARRIER)) return@setPlayListener
             if(packet.blockFace == BlockFace.TOP || packet.blockFace == BlockFace.BOTTOM) return@setPlayListener
             val tnt = instance.entities
@@ -184,6 +201,12 @@ class Bomberman {
                 buffer.write(NetworkBuffer.FLOAT, 1f)
                 val packet = ChangeGameStatePacket(buffer)
                 PacketUtils.sendPacket(player, packet)
+                it.player.sendMessage(
+                    Component.text("Join a game with ")
+                        .append(Component.text("/game", NamedTextColor.GREEN)
+                            .hoverEvent(HoverEvent.showText(Component.text("Will execute the command /game")))
+                            .clickEvent(ClickEvent.runCommand("/game")))
+                )
             }
             if(!it.spawnInstance.hasTag(Tag.Boolean("game"))) return@addListener
             player.inventory.addItemStack(ItemStack.of(Material.TNT).withMeta { it.canPlaceOn(Block.STONE, Block.BRICKS).canDestroy(Block.BARRIER).build() } )
