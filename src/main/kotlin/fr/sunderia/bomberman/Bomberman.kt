@@ -1,7 +1,5 @@
 package fr.sunderia.bomberman
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
 import fr.sunderia.bomberman.party.Game
 import fr.sunderia.bomberman.party.GameCommand
@@ -35,13 +33,17 @@ import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.block.Block
 import net.minestom.server.instance.block.BlockFace
+import net.minestom.server.instance.block.predicate.BlockPredicate
+import net.minestom.server.item.ItemComponent
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
+import net.minestom.server.item.component.BlockPredicates
 import net.minestom.server.listener.PlayerDiggingListener
 import net.minestom.server.network.NetworkBuffer
 import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket
 import net.minestom.server.network.packet.server.play.SetCooldownPacket
+import net.minestom.server.registry.DynamicRegistry
 import net.minestom.server.scoreboard.TeamBuilder
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.TaskSchedule
@@ -71,13 +73,13 @@ class Bomberman {
 
     companion object {
         val powerMap = mutableMapOf<UUID, Int>()
-        val gson: Gson = GsonBuilder().create()
         val logger: Logger = Logger.getLogger("Bomberman")
         private lateinit var lobbyInstance: Instance
         fun getLobbyInstance(): Instance {
             return lobbyInstance
         }
-        val fullBright: DimensionType = DimensionType.builder(NamespaceID.from("sunderia:full_bright")).ambientLight(2.0f).build()
+        val fullBrightType = DimensionType.builder(NamespaceID.from("sunderia:full_bright")).ambientLight(2.0f).build()
+        lateinit var fullbright: DynamicRegistry.Key<DimensionType>
     }
 
     private fun createNPC(lobby: Instance) {
@@ -88,7 +90,7 @@ class Bomberman {
 
     fun initialize() {
         val manager = MinecraftServer.getInstanceManager()
-        MinecraftServer.getDimensionTypeManager().addDimension(fullBright)
+        fullbright = MinecraftServer.getDimensionTypeRegistry().register(fullBrightType)
         val lobbyContainer: InstanceContainer = createInstanceContainer(manager)
         lobbyInstance = lobbyContainer
         createNPC(lobbyContainer)
@@ -186,7 +188,7 @@ class Bomberman {
                 it.isCancelled = true
                 return@addListener
             }
-            Powerup.entries[it.itemStack.meta().customModelData - 1].effect.accept(player)
+            Powerup.entries[it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!! - 1].effect.accept(player)
         }
 
         gameNode.addListener(PlayerSpawnEvent::class.java) {
@@ -209,7 +211,11 @@ class Bomberman {
                 )
             }
             if(!it.spawnInstance.hasTag(Tag.Boolean("game"))) return@addListener
-            player.inventory.addItemStack(ItemStack.of(Material.TNT).withMeta { it.canPlaceOn(Block.STONE, Block.BRICKS).canDestroy(Block.BARRIER).build() } )
+            player.inventory.addItemStack(ItemStack.of(Material.TNT).with {
+                it
+                    .set(ItemComponent.CAN_PLACE_ON, BlockPredicates(listOf(BlockPredicate(Block.STONE, Block.BRICKS))))
+                    .set(ItemComponent.CAN_BREAK, BlockPredicates(listOf(BlockPredicate(Block.BARRIER)))).build()
+            } )
 
             powerMap[player.uuid] = 2
             player.scheduler().scheduleTask({

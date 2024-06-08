@@ -1,9 +1,10 @@
 package fr.sunderia.bomberman
 
-import com.google.gson.JsonObject
 import fr.sunderia.bomberman.utils.BlockPos
 import fr.sunderia.bomberman.utils.Structure
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap
+import net.kyori.adventure.nbt.BinaryTagIO
+import net.kyori.adventure.nbt.CompoundBinaryTag
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.instance.Instance
@@ -12,18 +13,15 @@ import net.minestom.server.instance.InstanceManager
 import net.minestom.server.instance.batch.AbsoluteBlockBatch
 import net.minestom.server.instance.block.Block
 import net.minestom.server.utils.chunk.ChunkUtils
-import org.jglrxavpok.hephaistos.nbt.NBTException
-import org.jglrxavpok.hephaistos.nbt.NBTReader
 import java.io.IOException
-import java.util.*
 import java.util.stream.IntStream
 import kotlin.random.Random
 
 class InstanceCreator {
     companion object {
         fun createInstanceContainer(manager: InstanceManager): InstanceContainer {
-            val container = manager.createInstanceContainer(Bomberman.fullBright)
-            container.setGenerator { unit -> unit.modifier().fillHeight(0, 40, Block.STONE) }
+            val container = manager.createInstanceContainer(Bomberman.fullbright)
+            container.setGenerator { it.modifier().fillHeight(0, 40, Block.STONE) }
             return container
         }
 
@@ -42,40 +40,48 @@ class InstanceCreator {
             }
             getAffectedChunks(batch).let {
                 ChunkUtils.optionalLoadAll(container, it, null)
-                        .thenRun { batch.apply(container) { batch.clear() } }
+                    .thenRun { batch.apply(container) { batch.clear() } }
             }
         }
 
         private fun parseNBT(): Structure? {
             try {
                 Bomberman::class.java.getResourceAsStream("/bomberman.nbt").use { stream ->
-                    NBTReader(stream!!).use { reader ->
-                        val structure: MutableList<BlockPos> = LinkedList()
-                        val nbt = Bomberman.gson.fromJson(reader.read().toSNBT(), JsonObject::class.java)
-                        val palettes = nbt.getAsJsonArray("palette")
-                        val palette =
-                                IntStream.range(0, palettes.size())
-                                        .mapToObj { palettes[it] }
-                                        .map { it.asJsonObject }
-                                        .map { it.getAsJsonPrimitive("Name").asString }
-                                        .map<Block?> { Block.fromNamespaceId(it) }.toList().toTypedArray()
-                        val blockArray = nbt.getAsJsonArray("blocks")
-                        blockArray.forEach {
-                            val blockObj = it.asJsonObject
-                            val jsonPos = blockObj.getAsJsonArray("pos")
-                            structure.add(
-                                    BlockPos(Vec(jsonPos[0].asInt.toDouble(), jsonPos[1].asInt.toDouble(), jsonPos[2].asInt.toDouble()), palette[blockObj["state"].asInt])
+                    val reader = BinaryTagIO.unlimitedReader().read(stream!!, BinaryTagIO.Compression.GZIP)
+                    val structure = mutableListOf<BlockPos>()
+                    //val nbt = Bomberman.gson.fromJson(reader.getList(), JsonObject::class.java)
+                    val palettes = reader.getList("palette")
+                    val palette =
+                        IntStream.range(0, palettes.size())
+                            .mapToObj { palettes.getCompound(it) }
+                            .map { it.getString("Name") }
+                            .map<Block?> { Block.fromNamespaceId(it) }.toList().toTypedArray()
+                    val blockArray = reader.getList("blocks")
+                    blockArray.forEach {
+                        val blockObj = it.asBinaryTag() as CompoundBinaryTag
+                        val jsonPos = blockObj.getList("pos")
+                        structure.add(
+                            BlockPos(
+                                Vec(
+                                    jsonPos.getInt(0).toDouble(),
+                                    jsonPos.getInt(1).toDouble(),
+                                    jsonPos.getInt(2).toDouble()
+                                ), palette[blockObj.getInt("state")]
                             )
-                        }
-                        val size = IntArray(3)
-                        val jsonSize = nbt.getAsJsonArray("size")
-                        for (i in 0..2) size[i] = jsonSize[i].asInt
-                        return Structure(Vec(jsonSize[0].asInt.toDouble(), jsonSize[1].asInt.toDouble(), jsonSize[2].asInt.toDouble()), structure)
+                        )
                     }
+                    val size = IntArray(3)
+                    val jsonSize = reader.getList("size")
+                    for (i in 0..2) size[i] = jsonSize.getInt(i)
+                    return Structure(
+                        Vec(
+                            jsonSize.getInt(0).toDouble(),
+                            jsonSize.getInt(1).toDouble(),
+                            jsonSize.getInt(2).toDouble()
+                        ), structure
+                    )
                 }
             } catch (e: IOException) {
-                e.printStackTrace()
-            } catch (e: NBTException) {
                 e.printStackTrace()
             }
             return null

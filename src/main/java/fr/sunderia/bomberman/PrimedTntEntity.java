@@ -10,6 +10,7 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.*;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
@@ -86,8 +87,8 @@ public class PrimedTntEntity extends Entity {
             return;
         int index = Random.Default.nextInt(Powerup.values().length);
         Powerup powerup = Powerup.values()[index];
-        ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).withMeta(meta -> meta.customModelData(index + 1)
-                .displayName(Component.text(powerup.name().replace("_", " ").toLowerCase())));
+        ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).with(meta -> meta.set(ItemComponent.CUSTOM_MODEL_DATA, index + 1)
+                .set(ItemComponent.ITEM_NAME, Component.text(powerup.name().replace("_", " ").toLowerCase())));
         ItemEntity item = new ItemEntity(is);
         item.setInstance(getInstance(), pos);
     }
@@ -118,7 +119,7 @@ public class PrimedTntEntity extends Entity {
         explode();
         getInstance().setBlock(this.position, Block.AIR);
         remove();
-        if(pierceTeam.getMembers().contains(this.uuid.toString())) pierceTeam.removeMember(this.uuid.toString());
+        if(pierceTeam.getMembers().contains(this.getUuid().toString())) pierceTeam.removeMember(this.getUuid().toString());
     }
 
     public boolean isAPierceBomb() {
@@ -127,7 +128,7 @@ public class PrimedTntEntity extends Entity {
 
     public void setPierce(boolean pierce) {
         this.setGlowing(true);
-        pierceTeam.addMember(this.uuid.toString());
+        pierceTeam.addMember(this.getUuid().toString());
         this.pierce = pierce;
     }
 }

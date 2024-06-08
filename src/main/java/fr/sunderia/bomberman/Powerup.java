@@ -1,11 +1,10 @@
 package fr.sunderia.bomberman;
 
 import fr.sunderia.bomberman.utils.PowerupTags;
-import net.minestom.server.attribute.Attribute;
-import net.minestom.server.attribute.AttributeInstance;
-import net.minestom.server.attribute.AttributeModifier;
-import net.minestom.server.attribute.AttributeOperation;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.attribute.Attribute;
+import net.minestom.server.entity.attribute.AttributeModifier;
+import net.minestom.server.entity.attribute.AttributeOperation;
 
 import java.util.function.Consumer;
 
@@ -36,8 +35,7 @@ enum Powerup {
     }
 
     private static void incrementSpeed(Player player, float amount) {
-        AttributeInstance currentAttribute = player.getAttribute(Attribute.MOVEMENT_SPEED);
-        currentAttribute.addModifier(new AttributeModifier("speed", amount, AttributeOperation.ADDITION));
+        player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).addModifier(new AttributeModifier("speed", amount, AttributeOperation.ADD_VALUE));
     }
 
     @SuppressWarnings("DataFlowIssue")

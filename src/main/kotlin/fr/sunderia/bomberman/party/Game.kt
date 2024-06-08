@@ -8,11 +8,10 @@ import fr.sunderia.bomberman.utils.PowerupTags
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.MinecraftServer
-import net.minestom.server.attribute.Attribute
-import net.minestom.server.attribute.AttributeModifier
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
+import net.minestom.server.entity.attribute.Attribute
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.InstanceManager
@@ -70,11 +69,11 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
         powerMap.replaceAll { _: UUID, _: Int -> 2 }
         instance.players.forEach { p: Player ->
             p.clearEffects()
-            val uuids = p.getAttribute(Attribute.MOVEMENT_SPEED).modifiers.stream()
-                    .map { obj: AttributeModifier -> obj.id }
+            val uuids = p.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).modifiers.stream()
+                    .map { obj-> obj.id }
                     .toList().toTypedArray()
             for (uuid in uuids) {
-                p.getAttribute(Attribute.MOVEMENT_SPEED).removeModifier(uuid!!)
+                p.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).removeModifier(uuid!!)
             }
             PowerupTags.entries.forEach {
                 p.removeTag(it.getBool())
