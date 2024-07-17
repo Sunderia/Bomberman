@@ -32,6 +32,12 @@ public class PrimedTntEntity extends Entity {
     private boolean pierce;
     public static Team pierceTeam;
 
+    public double calculateNextY(double x, double maxPosX) {
+        double maxBlockX = maxPosX;
+        // -3.75 / (minBlock - maxBlock)² * (x - minBlock)(x - maxBlock)
+        return (-3.75f/Math.pow(0.0-maxBlockX, 2)) * (x - 0.0) * (x - maxBlockX);
+    }
+
     public Player getPlayer() {
         return player;
     }
@@ -40,6 +46,7 @@ public class PrimedTntEntity extends Entity {
         super(EntityType.TNT);
         this.player = player;
         this.setInstance(instance, pos);
+        this.setNoGravity(true);
         setBoundingBox(1, 1, 1);
     }
 

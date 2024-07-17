@@ -57,6 +57,8 @@ import java.net.URI
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
+import kotlin.math.abs
+import kotlin.math.sign
 
 
 fun main() {
@@ -78,7 +80,7 @@ class Bomberman {
         fun getLobbyInstance(): Instance {
             return lobbyInstance
         }
-        val fullBrightType = DimensionType.builder(NamespaceID.from("sunderia:full_bright")).ambientLight(2.0f).build()
+        val fullBrightType = DimensionType.builder().ambientLight(2.0f).build()
         lateinit var fullbright: DynamicRegistry.Key<DimensionType>
     }
 
@@ -90,7 +92,7 @@ class Bomberman {
 
     fun initialize() {
         val manager = MinecraftServer.getInstanceManager()
-        fullbright = MinecraftServer.getDimensionTypeRegistry().register(fullBrightType)
+        fullbright = MinecraftServer.getDimensionTypeRegistry().register(NamespaceID.from("sunderia:full_bright"), fullBrightType)
         val lobbyContainer: InstanceContainer = createInstanceContainer(manager)
         lobbyInstance = lobbyContainer
         createNPC(lobbyContainer)
@@ -118,6 +120,7 @@ class Bomberman {
 
     @Suppress("UnstableApiUsage", "NestedLambdaShadowedImplicitParameter")
     private fun registerListeners(container: InstanceContainer) {
+        val scheduleManager = MinecraftServer.getSchedulerManager()
         val spawn = Pos(.0, 45.0, .0)
         val extensionNode = MinecraftServer.getGlobalEventHandler()
         val lobbyNode = EventNode.all("lobby")
@@ -150,7 +153,7 @@ class Bomberman {
             (it.target as NPC).onInteract(it)
         }
         
-        MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerDiggingPacket::class.java) { packet: ClientPlayerDiggingPacket, player: Player ->
+        MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerDiggingPacket::class.java) { packet, player ->
             val instance = player.instance
             if(player.gameMode != GameMode.ADVENTURE || packet.status != ClientPlayerDiggingPacket.Status.STARTED_DIGGING) return@setPlayListener PlayerDiggingListener.playerDiggingListener(packet, player)
             //logger.info("Digging")
@@ -176,8 +179,26 @@ class Bomberman {
                 }
             }
             removeBlockAt(tnt.position, tnt.instance)
-            tnt.teleport(lastPos)
-            setBlockAt(tnt.position, Block.BARRIER, tnt.instance)
+            //tnt.teleport(lastPos)
+            val lastAirBlock = tnt.position.sub(lastPos).addAll()
+            val oldY = tnt.position.y
+            val tickUpdate = 3
+            val blockPerTicks = 1.0 / tickUpdate
+            var relativeX = 0.0
+            scheduleManager.scheduleTask({
+                if(tnt.instance == null) {
+                    return@scheduleTask TaskSchedule.stop()
+                }
+                relativeX += blockPerTicks
+                if(abs(relativeX) >= abs(lastAirBlock)) {
+                    setBlockAt(tnt.position, Block.BARRIER, tnt.instance)
+                    return@scheduleTask TaskSchedule.stop()
+                }
+                val addX = if(packet.blockFace == BlockFace.EAST) -1.0 else if(packet.blockFace == BlockFace.WEST) 1.0 else 0.0
+                val addZ = if(packet.blockFace == BlockFace.SOUTH) -1.0 else if(packet.blockFace == BlockFace.NORTH) 1.0 else 0.0
+                tnt.teleport(tnt.position.add(addX * blockPerTicks, .0, addZ * blockPerTicks).withY(tnt.calculateNextY(relativeX, abs(lastAirBlock)) + oldY))
+                return@scheduleTask TaskSchedule.nextTick()
+            }, TaskSchedule.immediate())
         }
 
         gameNode.addListener(PickupItemEvent::class.java) {
@@ -302,4 +323,5 @@ class Bomberman {
     }
 
     private fun Block.isAirOrBarrier() = this.isAir || this.compare(Block.BARRIER)
+    private fun Pos.addAll() = this.x + this.y + this.z
 }

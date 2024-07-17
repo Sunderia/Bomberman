@@ -69,7 +69,7 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
         powerMap.replaceAll { _: UUID, _: Int -> 2 }
         instance.players.forEach { p: Player ->
             p.clearEffects()
-            val uuids = p.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).modifiers.stream()
+            val uuids = p.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).modifiers().stream()
                     .map { obj-> obj.id }
                     .toList().toTypedArray()
             for (uuid in uuids) {
