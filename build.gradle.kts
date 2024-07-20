@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-	implementation("net.minestom:minestom-snapshots:8736fc43d8")
+	implementation("net.minestom:minestom-snapshots:1f34e60ea6")
     implementation("commons-codec:commons-codec:1.16.1")
 }
 
