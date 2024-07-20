@@ -1,5 +1,5 @@
 # Building minestom
-FROM gradle:8.8.0-jdk21 as gradle
+FROM gradle:8.8.0-jdk21 AS gradle
 RUN mkdir /gradlebuild
 WORKDIR /gradlebuild
 COPY . .
@@ -11,6 +11,6 @@ WORKDIR /app
 COPY --from=gradle /gradlebuild/build/libs/bomberman-all.jar .
 
 LABEL authors="minemobs"
-LABEL version="0.1.1"
+LABEL version="1.0.0"
 EXPOSE 25565
 ENTRYPOINT ["java", "-jar", "/app/bomberman-all.jar"]

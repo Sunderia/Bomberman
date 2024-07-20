@@ -58,7 +58,6 @@ import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.math.abs
-import kotlin.math.sign
 
 
 fun main() {
@@ -230,6 +229,10 @@ class Bomberman {
                             .hoverEvent(HoverEvent.showText(Component.text("Will execute the command /game")))
                             .clickEvent(ClickEvent.runCommand("/game")))
                 )
+                player.sendResourcePacks(ResourcePackRequest.resourcePackRequest().packs(ResourcePackInfo.resourcePackInfo()
+                    .hash(resourcePackSha1!!)
+                    .uri(URI.create("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip"))
+                ))
             }
             if(!it.spawnInstance.hasTag(Tag.Boolean("game"))) return@addListener
             player.inventory.addItemStack(ItemStack.of(Material.TNT).with {
@@ -241,16 +244,18 @@ class Bomberman {
             powerMap[player.uuid] = 2
             player.scheduler().scheduleTask({
                 if(!player.instance.hasTag(Tag.Boolean("game"))) return@scheduleTask
+                val hasBoxingGlove = player.hasTag(PowerupTags.BOXING_GLOVE.getBool())
+                val hasPierce = player.hasTag(PowerupTags.PIERCE.getBool())
                 player.sendActionBar(
                     Component.join(JoinConfiguration.separator(Component.text(" ")),
                         Component.text("\uE000").style { it.font(Key.key("bomberman", "font")) },
-                        Component.text(": ${powerMap[player.uuid]}")
+                        Component.text(": ${powerMap[player.uuid]}"),
+                        Component.text(" ${if(hasBoxingGlove) "✔" else "❌" } ").color(if(hasBoxingGlove) NamedTextColor.GREEN else NamedTextColor.RED),
+                        Component.text("\uE001").style {  it.font(Key.key("bomberman", "font")) },
+                        Component.text(" ${if(hasPierce) "✔" else "❌" } ").color(if(hasPierce) NamedTextColor.GREEN else NamedTextColor.RED),
+                        Component.text("\uE002").style {  it.font(Key.key("bomberman", "font")) }
                     ).style { it.font(Key.key("default")) })
             }, TaskSchedule.immediate(), TaskSchedule.tick(10))
-            player.sendResourcePacks(ResourcePackRequest.resourcePackRequest().packs(ResourcePackInfo.resourcePackInfo()
-                    .hash(resourcePackSha1!!)
-                    .uri(URI.create("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip"))
-            ))
         }
 
         gameNode.addListener(PlayerDeathEvent::class.java) { event ->
