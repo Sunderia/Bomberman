@@ -21,7 +21,7 @@ class NPC(uuid: UUID, private val name: String, private val skin: PlayerSkin = B
         if(skin.textures() != null && skin.signature() != null) {
             properties.add(PlayerInfoUpdatePacket.Property("textures", skin.textures(), skin.signature()))
         }
-        val entry = PlayerInfoUpdatePacket.Entry(uuid, name, properties, false, 0, GameMode.CREATIVE, null, null)
+        val entry = PlayerInfoUpdatePacket.Entry(uuid, name, properties, false, 0, GameMode.CREATIVE, null, null, 0)
         player.sendPacket(PlayerInfoUpdatePacket(PlayerInfoUpdatePacket.Action.ADD_PLAYER, entry))
         super.updateNewViewer(player)
         player.sendPackets(EntityMetaDataPacket(entityId,

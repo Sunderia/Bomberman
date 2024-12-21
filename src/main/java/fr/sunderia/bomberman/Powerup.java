@@ -35,7 +35,7 @@ enum Powerup {
     }
 
     private static void incrementSpeed(Player player, float amount) {
-        player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).addModifier(new AttributeModifier("speed", amount, AttributeOperation.ADD_VALUE));
+        player.getAttribute(Attribute.MOVEMENT_SPEED).addModifier(new AttributeModifier("speed", amount, AttributeOperation.ADD_VALUE));
     }
 
     @SuppressWarnings("DataFlowIssue")

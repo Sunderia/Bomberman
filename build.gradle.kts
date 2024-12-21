@@ -14,8 +14,9 @@ repositories {
 }
 
 dependencies {
-	implementation("net.minestom:minestom-snapshots:1f34e60ea6")
+	implementation("net.minestom:minestom-snapshots:7b659f0fc3")
     implementation("commons-codec:commons-codec:1.16.1")
+    runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
 }
 
 val mainClassPath = "fr.sunderia.bomberman.BombermanKt"

@@ -21,6 +21,7 @@ import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
+import net.minestom.server.entity.PlayerHand
 import net.minestom.server.event.EventNode
 import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
@@ -36,7 +37,6 @@ import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.component.BlockPredicates
 import net.minestom.server.listener.PlayerDiggingListener
-import net.minestom.server.network.NetworkBuffer
 import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket
 import net.minestom.server.network.packet.server.play.SetCooldownPacket
@@ -45,7 +45,6 @@ import net.minestom.server.scoreboard.TeamBuilder
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.NamespaceID
-import net.minestom.server.utils.PacketUtils
 import net.minestom.server.world.DimensionType
 import org.apache.commons.codec.digest.DigestUtils
 import java.io.ByteArrayOutputStream
@@ -114,7 +113,7 @@ class Bomberman {
         logger.info("Bomberman starting")
     }
 
-    @Suppress("UnstableApiUsage", "NestedLambdaShadowedImplicitParameter")
+    @Suppress("NestedLambdaShadowedImplicitParameter")
     private fun registerListeners(container: InstanceContainer) {
         val scheduleManager = MinecraftServer.getSchedulerManager()
         val spawn = Pos(.0, 45.0, .0)
@@ -145,7 +144,7 @@ class Bomberman {
         lobbyNode.addListener(PlayerEntityInteractEvent::class.java) {
             if(it.instance.hasTag(Tag.Boolean("game"))) return@addListener
             if(it.target !is NPC) return@addListener
-            if(it.hand != Player.Hand.MAIN) return@addListener
+            if(it.hand != PlayerHand.MAIN) return@addListener
             (it.target as NPC).onInteract(it)
         }
         
@@ -215,11 +214,7 @@ class Bomberman {
             player.respawnPoint = spawn
             if(it.isFirstSpawn) {
                 //Disables Death screen
-                val buffer = NetworkBuffer()
-                buffer.write(NetworkBuffer.BYTE, 11)
-                buffer.write(NetworkBuffer.FLOAT, 1f)
-                val packet = ChangeGameStatePacket(buffer)
-                PacketUtils.sendPacket(player, packet)
+                player.sendPacket(ChangeGameStatePacket(ChangeGameStatePacket.Reason.ENABLE_RESPAWN_SCREEN, 1f))
                 it.player.sendMessage(
                     Component.text("Join a game with ")
                         .append(Component.text("/game", NamedTextColor.GREEN)
@@ -293,7 +288,7 @@ class Bomberman {
             if (Cooldown.isInCooldown(it.player.uuid, "tnt")) return@addListener
 
             it.isCancelled = false
-            it.player.playerConnection.sendPacket(SetCooldownPacket(Material.TNT.id(), 0))
+            it.player.playerConnection.sendPacket(SetCooldownPacket(Material.TNT.name(), 0))
             it.consumeBlock(false)
             it.block = Block.BARRIER
 
@@ -301,7 +296,7 @@ class Bomberman {
                 val timeInSeconds = 2
                 val c = Cooldown(it.player.uuid, "tnt", timeInSeconds)
                 c.start()
-                val packet = SetCooldownPacket(Material.TNT.id(), timeInSeconds * 20)
+                val packet = SetCooldownPacket(Material.TNT.name(), timeInSeconds * 20)
                 it.player.playerConnection.sendPacket(packet)
             }
             val tnt = PrimedTntEntity(it.player, it.instance, it.blockPosition.add(0.5, 0.0, 0.5))

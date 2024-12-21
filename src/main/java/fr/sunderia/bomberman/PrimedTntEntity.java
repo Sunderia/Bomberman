@@ -16,7 +16,7 @@ import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.scoreboard.Team;
-import net.minestom.server.utils.PacketUtils;
+import net.minestom.server.utils.PacketSendingUtils;
 
 /**
  * @author <a href=
@@ -33,9 +33,8 @@ public class PrimedTntEntity extends Entity {
     public static Team pierceTeam;
 
     public double calculateNextY(double x, double maxPosX) {
-        double maxBlockX = maxPosX;
         // -3.75 / (minBlock - maxBlock)² * (x - minBlock)(x - maxBlock)
-        return (-3.75f/Math.pow(0.0-maxBlockX, 2)) * (x - 0.0) * (x - maxBlockX);
+        return (-3.75f/Math.pow(0.0- maxPosX, 2)) * (x - 0.0) * (x - maxPosX);
     }
 
     public Player getPlayer() {
@@ -72,8 +71,8 @@ public class PrimedTntEntity extends Entity {
                     });
             ParticlePacket packet = new ParticlePacket(Particle.SMOKE, newPos.x() + .5,
                     newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 0, 10);
-            PacketUtils.sendPacket(getViewersAsAudience(), packet);
-            PacketUtils.sendPacket(getViewersAsAudience(), new ParticlePacket(Particle.LAVA,
+            PacketSendingUtils.sendPacket(getViewersAsAudience(), packet);
+            PacketSendingUtils.sendPacket(getViewersAsAudience(), new ParticlePacket(Particle.LAVA,
                     newPos.x(), newPos.y() + .5, newPos.z(), 0, 0, 0, 0, 10));
             int id = getInstance().getBlock(newPos).id();
             if (id != Block.AIR.id() && id != Block.BARRIER.id()) {
