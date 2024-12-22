@@ -204,7 +204,8 @@ class Bomberman {
                 it.isCancelled = true
                 return@addListener
             }
-            Powerup.entries[it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!! - 1].effect.accept(player)
+            //Powerup.entries[it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!! - 1].effect.accept(player)
+            Powerup.valueOf(it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!!.strings()[0].uppercase()).effect.accept(player)
         }
 
         gameNode.addListener(PlayerSpawnEvent::class.java) {
@@ -281,7 +282,7 @@ class Bomberman {
 
             val player = it.player
             if(player.gameMode != GameMode.ADVENTURE && player.gameMode != GameMode.CREATIVE) return@addListener
-            if(Game.getGame(it.instance)!!.gameStatus != GameStatus.RUNNING) return@addListener
+            //if(Game.getGame(it.instance)!!.gameStatus != GameStatus.RUNNING) return@addListener
 
             val blockBelowPlayer = player.instance.getBlock(it.blockPosition.sub(.0, 1.0, .0))
             if(blockBelowPlayer.id() != Block.STONE.id() || player.instance.getBlock(it.blockPosition.add(.0, 1.0, .0)).isSolid) return@addListener

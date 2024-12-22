@@ -13,10 +13,13 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.item.component.CustomModelData;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.scoreboard.Team;
 import net.minestom.server.utils.PacketSendingUtils;
+
+import java.util.List;
 
 /**
  * @author <a href=
@@ -93,7 +96,7 @@ public class PrimedTntEntity extends Entity {
             return;
         int index = Random.Default.nextInt(Powerup.values().length);
         Powerup powerup = Powerup.values()[index];
-        ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).with(meta -> meta.set(ItemComponent.CUSTOM_MODEL_DATA, index + 1)
+        ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).with(meta -> meta.set(ItemComponent.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(powerup.name().toLowerCase()), List.of()))
                 .set(ItemComponent.ITEM_NAME, Component.text(powerup.name().replace("_", " ").toLowerCase())));
         ItemEntity item = new ItemEntity(is);
         item.setInstance(getInstance(), pos);
