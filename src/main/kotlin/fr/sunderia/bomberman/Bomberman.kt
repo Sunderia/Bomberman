@@ -16,6 +16,7 @@ import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.title.TitlePart
 import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Pos
@@ -54,7 +55,6 @@ import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.math.abs
-
 
 fun main() {
     val game = Bomberman()
@@ -151,9 +151,7 @@ class Bomberman {
         MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerDiggingPacket::class.java) { packet, player ->
             val instance = player.instance
             if(player.gameMode != GameMode.ADVENTURE || packet.status != ClientPlayerDiggingPacket.Status.STARTED_DIGGING) return@setPlayListener PlayerDiggingListener.playerDiggingListener(packet, player)
-            //logger.info("Digging")
             if(!player.hasTag(PowerupTags.BOXING_GLOVE.getBool())) return@setPlayListener
-            //logger.info("Has effect: ")
             if(!instance.getBlock(packet.blockPosition).compare(Block.BARRIER)) return@setPlayListener
             if(packet.blockFace == BlockFace.TOP || packet.blockFace == BlockFace.BOTTOM) return@setPlayListener
             val tnt = instance.entities
@@ -204,7 +202,6 @@ class Bomberman {
                 it.isCancelled = true
                 return@addListener
             }
-            //Powerup.entries[it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!! - 1].effect.accept(player)
             Powerup.valueOf(it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!!.strings()[0].uppercase()).effect.accept(player)
         }
 
@@ -232,7 +229,7 @@ class Bomberman {
                 it
                     .set(ItemComponent.CAN_PLACE_ON, BlockPredicates(listOf(BlockPredicate(Block.STONE, Block.BRICKS))))
                     .set(ItemComponent.CAN_BREAK, BlockPredicates(listOf(BlockPredicate(Block.BARRIER)))).build()
-            } )
+            })
 
             powerMap[player.uuid] = 2
             player.scheduler().scheduleTask({
@@ -241,6 +238,9 @@ class Bomberman {
                 val hasPierce = player.hasTag(PowerupTags.PIERCE.getBool())
                 player.sendActionBar(
                     Component.join(JoinConfiguration.separator(Component.text(" ")),
+                        Component.text("\uE100".repeat(3) + "N" + player.instance.players.filter { it.gameMode == GameMode.ADVENTURE }.size)
+                            .style { it.font(Key.key("bomberman", "font")).color(TextColor.color(0x3804f9)) },
+                        Component.text("\u0020".repeat(5)),
                         Component.text("\uE000").style { it.font(Key.key("bomberman", "font")) },
                         Component.text(": ${powerMap[player.uuid]}"),
                         Component.text(" ${if(hasBoxingGlove) "✔" else "❌" } ").color(if(hasBoxingGlove) NamedTextColor.GREEN else NamedTextColor.RED),
@@ -263,12 +263,9 @@ class Bomberman {
                 if(it.isDead) it.respawn()
                 it.sendMessage(Component.text("${winner.username} Won"))
                 it.teleport(spawn)
-                //it.gameMode = GameMode.ADVENTURE
                 it.gameMode = GameMode.SPECTATOR
             }
 
-            /*generateStructure(winner.instance)
-            resetGame(winner.instance)*/
             winner.sendTitlePart(TitlePart.TITLE, Component.text("You won", NamedTextColor.GREEN))
             winner.teleport(spawn)
             val game = Game.getGame(event.instance)!!
@@ -282,7 +279,7 @@ class Bomberman {
 
             val player = it.player
             if(player.gameMode != GameMode.ADVENTURE && player.gameMode != GameMode.CREATIVE) return@addListener
-            //if(Game.getGame(it.instance)!!.gameStatus != GameStatus.RUNNING) return@addListener
+            if(Game.getGame(it.instance)!!.gameStatus != GameStatus.RUNNING) return@addListener
 
             val blockBelowPlayer = player.instance.getBlock(it.blockPosition.sub(.0, 1.0, .0))
             if(blockBelowPlayer.id() != Block.STONE.id() || player.instance.getBlock(it.blockPosition.add(.0, 1.0, .0)).isSolid) return@addListener
