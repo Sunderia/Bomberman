@@ -19,10 +19,11 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.title.TitlePart
 import net.minestom.server.MinecraftServer
+import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
-import net.minestom.server.entity.GameMode
-import net.minestom.server.entity.Player
-import net.minestom.server.entity.PlayerHand
+import net.minestom.server.coordinate.Vec
+import net.minestom.server.entity.*
+import net.minestom.server.entity.metadata.display.ItemDisplayMeta
 import net.minestom.server.event.EventNode
 import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
@@ -37,6 +38,7 @@ import net.minestom.server.item.ItemComponent
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.component.BlockPredicates
+import net.minestom.server.item.component.HeadProfile
 import net.minestom.server.listener.PlayerDiggingListener
 import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket
@@ -69,6 +71,7 @@ class Bomberman {
     private var resourcePackSha1: String? = null
 
     companion object {
+        val fontKey = Key.key("bomberman", "font")
         val powerMap = mutableMapOf<UUID, Int>()
         val logger: Logger = Logger.getLogger("Bomberman")
         private lateinit var lobbyInstance: Instance
@@ -85,12 +88,41 @@ class Bomberman {
         npc.setView(180.0F, .0F)
     }
 
+    private fun createPlayerPart(model: String, profile: HeadProfile, pos: Pos, translation: Point, lobby: Instance) {
+        val entity = Entity(EntityType.ITEM_DISPLAY)
+        entity.setNoGravity(true)
+        val meta = entity.entityMeta as ItemDisplayMeta
+        meta.displayContext = ItemDisplayMeta.DisplayContext.THIRD_PERSON_RIGHT_HAND
+        meta.viewRange = .6f
+        meta.leftRotation = floatArrayOf(.0f, .0f, .0f, 1f)
+        meta.rightRotation = floatArrayOf(.0f, .0f, .0f, 1f)
+        meta.scale = Vec(1.0, 1.0, 1.0)
+        meta.translation = translation
+        val headItem = ItemStack.of(Material.PLAYER_HEAD).withItemModel("player_display:player/${model}").with(ItemComponent.PROFILE, profile)
+        meta.itemStack = headItem
+        entity.setInstance(lobby, pos)
+        logger.info("Created player part $model at ${entity.position}")
+    }
+
+    private fun createFakeNPC(lobby: Instance) {
+        val map = mapOf(
+            "head" to (Pos(.0, 1.4, .0) to Pos.ZERO), "torso" to (Pos(.0, 1.4, .0) to Pos(.0, -3072.0, .0)),
+            "right_arm" to (Pos(.0, 1.4, .0) to Pos(.0, -1024.0, .0)), "left_arm" to (Pos(.0, 1.4, .0) to Pos(.0, -2048.0, .0)),
+            "right_leg" to (Pos(.0, .7, .0) to Pos(.0, -4096.0, .0)), "left_leg" to (Pos(.0, .7, .0) to Pos(.0, -5120.0, .0)))
+
+        for ((key, value) in map) {
+            val (relativePos, transform) = value
+            createPlayerPart(key, HeadProfile(NPC.BOMBERMAN_SKIN), Pos(5.0, 40.0, 10.0).add(relativePos), transform, lobby)
+        }
+    }
+
     fun initialize() {
         val manager = MinecraftServer.getInstanceManager()
         fullbright = MinecraftServer.getDimensionTypeRegistry().register(NamespaceID.from("sunderia:full_bright"), fullBrightType)
         val lobbyContainer: InstanceContainer = createInstanceContainer(manager)
         lobbyInstance = lobbyContainer
         createNPC(lobbyContainer)
+        createFakeNPC(lobbyContainer)
         OpenToLAN.open()
         //MojangAuth.init()
         registerListeners(lobbyContainer)
@@ -232,21 +264,23 @@ class Bomberman {
             })
 
             powerMap[player.uuid] = 2
+            Game.getGame(player.instance)!!.showBossbar(player)
             player.scheduler().scheduleTask({
                 if(!player.instance.hasTag(Tag.Boolean("game"))) return@scheduleTask
                 val hasBoxingGlove = player.hasTag(PowerupTags.BOXING_GLOVE.getBool())
                 val hasPierce = player.hasTag(PowerupTags.PIERCE.getBool())
+                val playerLeftCount = player.instance.players.filter { it.gameMode == GameMode.ADVENTURE }.size
                 player.sendActionBar(
                     Component.join(JoinConfiguration.separator(Component.text(" ")),
-                        Component.text("\uE100".repeat(3) + "N" + player.instance.players.filter { it.gameMode == GameMode.ADVENTURE }.size)
-                            .style { it.font(Key.key("bomberman", "font")).color(TextColor.color(0x3804f9)) },
+                        (Component.text("\uE100".repeat(3) + "Nn${playerLeftCount}"))
+                            .style { it.font(fontKey).color(TextColor.color(0x3804f9)) },
                         Component.text("\u0020".repeat(5)),
-                        Component.text("\uE000").style { it.font(Key.key("bomberman", "font")) },
+                        Component.text("\uE000").style { it.font(fontKey) },
                         Component.text(": ${powerMap[player.uuid]}"),
                         Component.text(" ${if(hasBoxingGlove) "✔" else "❌" } ").color(if(hasBoxingGlove) NamedTextColor.GREEN else NamedTextColor.RED),
-                        Component.text("\uE001").style {  it.font(Key.key("bomberman", "font")) },
+                        Component.text("\uE001").style {  it.font(fontKey) },
                         Component.text(" ${if(hasPierce) "✔" else "❌" } ").color(if(hasPierce) NamedTextColor.GREEN else NamedTextColor.RED),
-                        Component.text("\uE002").style {  it.font(Key.key("bomberman", "font")) }
+                        Component.text("\uE002").style {  it.font(fontKey) }
                     ).style { it.font(Key.key("default")) })
             }, TaskSchedule.immediate(), TaskSchedule.tick(10))
         }

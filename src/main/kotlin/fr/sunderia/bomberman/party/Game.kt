@@ -1,12 +1,17 @@
 package fr.sunderia.bomberman.party
 
 import fr.sunderia.bomberman.Bomberman
+import fr.sunderia.bomberman.Bomberman.Companion.fontKey
 import fr.sunderia.bomberman.Bomberman.Companion.powerMap
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
 import fr.sunderia.bomberman.InstanceCreator.Companion.generateStructure
 import fr.sunderia.bomberman.utils.PowerupTags
+import net.kyori.adventure.bossbar.BossBar
+import net.kyori.adventure.key.Key
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.ShadowColor
 import net.minestom.server.MinecraftServer
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
@@ -19,18 +24,46 @@ import net.minestom.server.tag.Tag
 import net.minestom.server.timer.SchedulerManager
 import net.minestom.server.timer.TaskSchedule
 import java.util.*
+import kotlin.math.floor
 
 data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager = MinecraftServer.getSchedulerManager(), var gameStatus: GameStatus = GameStatus.WAITING) {
     private var timeLeftBeforeClose = 5
     private var timeLeftBeforeStart = 10
+    private var playersAtStartOfGame = 0
+    // Time left until sudden death
+    private var timeLimit = 60
+    /*
+    bossbar set bomberman:timer name [
+        {"text": "\uE101\uE101\uE101\uE101\uE402\uE407", "color": "red", "font": "bomberman:font"},
+        {"font":"bomberman:font", "text":"\uE100\uE100\uE100\uE102\uE200","shadow_color": 0}
+    ]
+     */
+    private val bossbar: BossBar = BossBar.bossBar(
+        bossBarText(),
+        1f,
+        BossBar.Color.WHITE,
+        BossBar.Overlay.PROGRESS
+    )
+
+    private fun bossBarText() = text("${"\uE101".repeat(3)}${Char(0xE400 + floor(timeLimit / 10f).toInt())}${Char(0xE400 + (timeLimit % 10))}")
+        .style { it.color(NamedTextColor.RED).font(fontKey) }
+        .append(text("${"\uE100".repeat(4)}${"\uE102"}\uE200").style { it.shadowColor(ShadowColor.none()) })
+    fun getPlayersAtStartOfGame() = if(playersAtStartOfGame == 0) instance.players.size else playersAtStartOfGame
 
     init {
         val manager = MinecraftServer.getSchedulerManager()
         manager.submitTask {
             if(timeLeftBeforeStart == 0) {
+                if(gameStatus == GameStatus.RUNNING && timeLimit > 0) {
+                    timeLimit--
+                    bossbar.name(bossBarText())
+                    return@submitTask TaskSchedule.seconds(1)
+                }
+                if(gameStatus == GameStatus.ENDING) return@submitTask TaskSchedule.stop()
                 instance.sendMessage(text("Starting game"))
                 gameStatus = GameStatus.RUNNING
-                return@submitTask TaskSchedule.stop()
+                playersAtStartOfGame = instance.players.size
+                return@submitTask TaskSchedule.seconds(1)
             }
             if(instance.players.size >= 2) {
                 timeLeftBeforeStart--
@@ -84,6 +117,10 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
                 e.entityType.id() == EntityType.TNT.id() || e.entityType.id() == EntityType.ITEM.id()
             }
             .forEach { obj: Entity -> obj.remove() }
+    }
+
+    fun showBossbar(player: Player) {
+        player.showBossBar(bossbar)
     }
 
     companion object {
