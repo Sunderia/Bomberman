@@ -3,12 +3,11 @@ package fr.sunderia.bomberman.party
 import fr.sunderia.bomberman.Bomberman
 import fr.sunderia.bomberman.Bomberman.Companion.fontKey
 import fr.sunderia.bomberman.Bomberman.Companion.powerMap
+import fr.sunderia.bomberman.GameMap
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
 import fr.sunderia.bomberman.InstanceCreator.Companion.generateStructure
 import fr.sunderia.bomberman.utils.PowerupTags
 import net.kyori.adventure.bossbar.BossBar
-import net.kyori.adventure.key.Key
-import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.ShadowColor
@@ -26,7 +25,10 @@ import net.minestom.server.timer.TaskSchedule
 import java.util.*
 import kotlin.math.floor
 
-data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager = MinecraftServer.getSchedulerManager(), var gameStatus: GameStatus = GameStatus.WAITING) {
+data class Game(val instance: InstanceContainer, val map: GameMap) {
+    var gameStatus: GameStatus = GameStatus.WAITING
+    private var playerSpawnCounter = 0
+    private val scheduler: SchedulerManager = MinecraftServer.getSchedulerManager()
     private var timeLeftBeforeClose = 5
     private var timeLeftBeforeStart = 10
     private var playersAtStartOfGame = 0
@@ -45,14 +47,12 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
         BossBar.Overlay.PROGRESS
     )
 
-    private fun bossBarText() = text("${"\uE101".repeat(3)}${Char(0xE400 + floor(timeLimit / 10f).toInt())}${Char(0xE400 + (timeLimit % 10))}")
+    private fun bossBarText() = text("${"\uE101".repeat(2)}${Char(0xE400 + floor(timeLimit / 10f).toInt())}${Char(0xE400 + (timeLimit % 10))}")
         .style { it.color(NamedTextColor.RED).font(fontKey) }
         .append(text("${"\uE100".repeat(4)}${"\uE102"}\uE200").style { it.shadowColor(ShadowColor.none()) })
-    fun getPlayersAtStartOfGame() = if(playersAtStartOfGame == 0) instance.players.size else playersAtStartOfGame
 
     init {
-        val manager = MinecraftServer.getSchedulerManager()
-        manager.submitTask {
+        scheduler.submitTask {
             if(timeLeftBeforeStart == 0) {
                 if(gameStatus == GameStatus.RUNNING && timeLimit > 0) {
                     timeLimit--
@@ -86,7 +86,7 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
 
     fun endGame() {
         this.gameStatus = GameStatus.ENDING
-        MinecraftServer.getSchedulerManager().submitTask {
+        scheduler.submitTask {
             if (this.timeLeftBeforeClose == 0) {
                 resetGame(this.instance)
                 this.closeGame()
@@ -123,24 +123,29 @@ data class Game(val instance: InstanceContainer, val scheduler: SchedulerManager
         player.showBossBar(bossbar)
     }
 
+    fun spawnPlayer(player: Player) {
+        player.teleport(map.settings.spawnPoints[playerSpawnCounter % map.settings.spawnPoints.size])
+        playerSpawnCounter++
+    }
+
     companion object {
         // Can be bypassed by having a party with more than 4 players
-        private const val MAX_PLAYERS_PER_GAME = 4
         private val games = mutableMapOf<Instance, Game>()
 
         fun getNonFilledGames(): Game? {
-            return games.values.filter { it.instance.players.size < MAX_PLAYERS_PER_GAME && it.gameStatus == GameStatus.WAITING }.maxByOrNull { it.instance.players.size }
+            return games.values.filter { it.instance.players.size < it.map.settings.maxPlayers && it.gameStatus == GameStatus.WAITING }
+                .maxByOrNull { it.instance.players.size }
         }
 
         fun getGame(instance: Instance) = games[instance]
 
         fun removeGame(instance: Instance) = games.remove(instance)
 
-        fun createGame(manager: InstanceManager): InstanceContainer {
+        fun createGame(manager: InstanceManager, map: GameMap): InstanceContainer {
             val container = createInstanceContainer(manager)
             container.setTag(Tag.Boolean("game"), true)
-            generateStructure(container)
-            val game = Game(container)
+            val game = Game(container, map)
+            generateStructure(container, game)
             games[container] = game
             return container
         }

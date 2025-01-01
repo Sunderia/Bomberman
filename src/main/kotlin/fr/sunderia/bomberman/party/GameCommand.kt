@@ -1,5 +1,6 @@
 package fr.sunderia.bomberman.party
 
+import fr.sunderia.bomberman.GameMap
 import net.kyori.adventure.text.Component.text
 import net.minestom.server.MinecraftServer
 import net.minestom.server.command.builder.Command
@@ -11,14 +12,14 @@ class GameCommand: Command("game") {
         fun startGame(sender: Player, manager: InstanceManager = MinecraftServer.getInstanceManager()) {
             val party = Party.getParty(sender)
             if(party != null && party.playerList.size != 0) {
-                party.warp(Game.createGame(manager))
+                party.warp(Game.createGame(manager, GameMap.random(party.playerList.size)))
                 //Funny text to send
                 return
             }
 
             var game = Game.getNonFilledGames()
             if(game == null) {
-                game = Game.getGame(Game.createGame(manager))!!
+                game = Game.getGame(Game.createGame(manager, GameMap.random()))!!
             }
 
             if(party != null) party.warp(game.instance)

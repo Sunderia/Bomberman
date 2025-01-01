@@ -1,5 +1,6 @@
 package fr.sunderia.bomberman.party
 
+import fr.sunderia.bomberman.Bomberman
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.format.NamedTextColor
@@ -51,6 +52,10 @@ data class Party(var host: Player, val playerList: MutableSet<Player> = mutableS
     }
 
     fun sendInvite(player: Player) {
+        if(this.playerList.size >= Bomberman.getMaxAmountOfPlayers()) {
+            player.sendMessage(text(" > ${this.host.username}'s party is full."))
+            return
+        }
         this.invites.add(player)
         player.sendMessage(text {
             it.append(text("> You have been invited to "))
@@ -64,6 +69,11 @@ data class Party(var host: Player, val playerList: MutableSet<Player> = mutableS
     }
 
     fun joinParty(player: Player) {
+        if(this.playerList.size >= Bomberman.getMaxAmountOfPlayers()) {
+            player.sendMessage(text(" > Sorry but ${this.host.username}'s party is full."))
+            this.invites.remove(player)
+            return
+        }
         this.playerList.forEach {
             it.sendMessage(text(" > ${player.username} joined the party."))
         }
