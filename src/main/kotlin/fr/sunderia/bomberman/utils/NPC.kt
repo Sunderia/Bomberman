@@ -37,6 +37,7 @@ class NPC(uuid: UUID, private val name: String, private val skin: PlayerSkin = B
         ))
     }
 
+    @Suppress("UnstableApiUsage")
     override fun updateOldViewer(player: Player) {
         super.updateOldViewer(player)
         player.sendPackets(PlayerInfoRemovePacket(uuid))

@@ -2,26 +2,19 @@ package fr.sunderia.bomberman
 
 import com.google.gson.Gson
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
-import fr.sunderia.bomberman.party.*
+import fr.sunderia.bomberman.party.GameCommand
+import fr.sunderia.bomberman.party.PartyCommand
+import fr.sunderia.bomberman.utils.FakeNPC
 import fr.sunderia.bomberman.utils.NPC
 import fr.sunderia.bomberman.utils.ResourceUtils
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.MinecraftServer
-import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
-import net.minestom.server.coordinate.Vec
-import net.minestom.server.entity.Entity
-import net.minestom.server.entity.EntityType
-import net.minestom.server.entity.metadata.display.ItemDisplayMeta
 import net.minestom.server.extras.lan.OpenToLAN
 import net.minestom.server.extras.velocity.VelocityProxy
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
-import net.minestom.server.item.ItemComponent
-import net.minestom.server.item.ItemStack
-import net.minestom.server.item.Material
-import net.minestom.server.item.component.HeadProfile
 import net.minestom.server.registry.DynamicRegistry
 import net.minestom.server.scoreboard.TeamBuilder
 import net.minestom.server.utils.NamespaceID
@@ -30,13 +23,9 @@ import org.apache.commons.codec.digest.DigestUtils
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URI
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
-import kotlin.collections.Map
 
 fun main() {
     val game = Bomberman()
@@ -69,33 +58,6 @@ class Bomberman {
         fun getMaxAmountOfPlayers(): Int = maps.values.maxOf { it.settings.maxPlayers }
     }
 
-    private fun createPlayerPart(model: String, profile: HeadProfile, pos: Pos, translation: Point, lobby: Instance) {
-        val entity = Entity(EntityType.ITEM_DISPLAY)
-        entity.setNoGravity(true)
-        val meta = entity.entityMeta as ItemDisplayMeta
-        meta.displayContext = ItemDisplayMeta.DisplayContext.THIRD_PERSON_RIGHT_HAND
-        meta.viewRange = .6f
-        meta.leftRotation = floatArrayOf(.0f, .0f, .0f, 1f)
-        meta.rightRotation = floatArrayOf(.0f, .0f, .0f, 1f)
-        meta.scale = Vec(1.0, 1.0, 1.0)
-        meta.translation = translation
-        val headItem = ItemStack.of(Material.PLAYER_HEAD).withItemModel("player_display:player/${model}").with(ItemComponent.PROFILE, profile)
-        meta.itemStack = headItem
-        entity.setInstance(lobby, pos)
-    }
-
-    private fun createFakeNPC(lobby: Instance) {
-        val map = mapOf(
-            "head" to (Pos(.0, 1.4, .0) to Pos.ZERO), "torso" to (Pos(.0, 1.4, .0) to Pos(.0, -3072.0, .0)),
-            "right_arm" to (Pos(.0, 1.4, .0) to Pos(.0, -1024.0, .0)), "left_arm" to (Pos(.0, 1.4, .0) to Pos(.0, -2048.0, .0)),
-            "right_leg" to (Pos(.0, .7, .0) to Pos(.0, -4096.0, .0)), "left_leg" to (Pos(.0, .7, .0) to Pos(.0, -5120.0, .0)))
-
-        for ((key, value) in map) {
-            val (relativePos, transform) = value
-            createPlayerPart(key, HeadProfile(NPC.BOMBERMAN_SKIN), Pos(5.0, 40.0, 10.0).add(relativePos), transform, lobby)
-        }
-    }
-
     fun initialize() {
         val uri = Bomberman::class.java.getResource("/maps/")?.toURI() ?: throw IOException("Could not find maps folder")
         val paths = ResourceUtils.getPaths(uri)
@@ -110,7 +72,7 @@ class Bomberman {
         val lobbyContainer: InstanceContainer = createInstanceContainer(manager)
         lobbyInstance = lobbyContainer
         NPC.createNPC(lobbyContainer)
-        createFakeNPC(lobbyContainer)
+        FakeNPC.createFakeNPC(lobbyContainer, Pos(5.0, 40.0, 10.0))
         OpenToLAN.open()
         //MojangAuth.init()
         Listeners.registerListeners(lobbyContainer)

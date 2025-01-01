@@ -127,6 +127,7 @@ public class PrimedTntEntity extends Entity {
             return;
         explode();
         getInstance().setBlock(this.position, Block.AIR);
+        getInstance().setBlock(this.position.add(.0, 1.0, .0), Block.AIR);
         remove();
         if(pierceTeam.getMembers().contains(this.getUuid().toString())) pierceTeam.removeMember(this.getUuid().toString());
     }

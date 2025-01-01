@@ -26,9 +26,6 @@ class InstanceCreator {
             val batch = AbsoluteBlockBatch()
             for ((vec, block) in blocks1) {
                 if (block.isAir) continue
-                if (block.name().endsWith("glass")) {
-                    batch.setBlock(startPos.add(vec).add(.0, 15.0, .0), Block.BARRIER)
-                }
                 if (block.id() == Block.BRICKS.id() && Random.nextInt(3) == 2) continue
                 batch.setBlock(startPos.add(vec), block)
                 if (block.id() == Block.BRICKS.id()) {

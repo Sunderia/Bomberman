@@ -6,27 +6,33 @@ import fr.sunderia.bomberman.Bomberman.Companion.powerMap
 import fr.sunderia.bomberman.GameMap
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
 import fr.sunderia.bomberman.InstanceCreator.Companion.generateStructure
+import fr.sunderia.bomberman.utils.FakeNPC
 import fr.sunderia.bomberman.utils.PowerupTags
 import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.ShadowColor
 import net.minestom.server.MinecraftServer
+import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.attribute.Attribute
+import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.InstanceManager
 import net.minestom.server.tag.Tag
+import net.minestom.server.timer.ExecutionType
 import net.minestom.server.timer.SchedulerManager
 import net.minestom.server.timer.TaskSchedule
 import java.util.*
+import kotlin.math.abs
 import kotlin.math.floor
 
 data class Game(val instance: InstanceContainer, val map: GameMap) {
     var gameStatus: GameStatus = GameStatus.WAITING
+    private val playerNPCMap = mutableMapOf<UUID, FakeNPC>()
     private var playerSpawnCounter = 0
     private val scheduler: SchedulerManager = MinecraftServer.getSchedulerManager()
     private var timeLeftBeforeClose = 5
@@ -46,6 +52,8 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         BossBar.Color.WHITE,
         BossBar.Overlay.PROGRESS
     )
+
+    private fun getFakeNPC(uuid: UUID) = playerNPCMap[uuid]
 
     private fun bossBarText() = text("${"\uE101".repeat(2)}${Char(0xE400 + floor(timeLimit / 10f).toInt())}${Char(0xE400 + (timeLimit % 10))}")
         .style { it.color(NamedTextColor.RED).font(fontKey) }
@@ -99,7 +107,9 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
     }
 
     private fun resetGame(instance: Instance) {
-        powerMap.replaceAll { _: UUID, _: Int -> 2 }
+        playerNPCMap.values.forEach { it.remove() }
+        playerNPCMap.clear()
+        powerMap.replaceAll { _, _ -> 2 }
         instance.players.forEach { p: Player ->
             p.clearEffects()
             val uuids = p.getAttribute(Attribute.MOVEMENT_SPEED).modifiers().stream()
@@ -124,12 +134,37 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
     }
 
     fun spawnPlayer(player: Player) {
-        player.teleport(map.settings.spawnPoints[playerSpawnCounter % map.settings.spawnPoints.size])
+        val spawnPoints = map.settings.spawnPoints
+        val pos = spawnPoints[playerSpawnCounter % spawnPoints.size].add(.5, .0, .5)
+        player.teleport(pos)
         playerSpawnCounter++
+        val entity = Entity(EntityType.ARMOR_STAND)
+        val meta = entity.entityMeta as ArmorStandMeta
+        meta.isInvisible = true
+        meta.isMarker = true
+        meta.isCustomNameVisible = false
+        entity.setNoGravity(true)
+        var (x, y, z) = pos
+        y += 3
+        x += (x / abs(x))
+        z += (z / abs(z))
+        entity.setInstance(instance, Pos(x,y,z))
+        entity.addPassenger(player)
+        playerNPCMap[player.uuid] = FakeNPC.createFakeNPC(instance, pos)
+        player.scheduler().submitTask({
+            val game = getGame(player.instance) ?: return@submitTask TaskSchedule.stop()
+            val npc = game.getFakeNPC(player.uuid) ?: return@submitTask TaskSchedule.stop()
+            val inputs = player.inputs()
+            if(inputs.forward()) npc.moveForward()
+            if(inputs.backward()) npc.moveBackward()
+            if(inputs.right()) npc.rotateRight()
+            if(inputs.left()) npc.rotateLeft()
+            if(inputs.jump()) npc.placeTNT(player)
+            return@submitTask TaskSchedule.tick(3)
+        }, ExecutionType.TICK_END)
     }
 
     companion object {
-        // Can be bypassed by having a party with more than 4 players
         private val games = mutableMapOf<Instance, Game>()
 
         fun getNonFilledGames(): Game? {
@@ -157,3 +192,7 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         }
     }
 }
+
+private operator fun Pos.component1(): Double = x
+private operator fun Pos.component2(): Double = y
+private operator fun Pos.component3(): Double = z

@@ -130,6 +130,14 @@ class Listeners {
             }, TaskSchedule.immediate())
         }
 
+        gameNode.addListener(PlayerMoveEvent::class.java) {
+            /*if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
+            val inputs = it.player.inputs()
+            val npc = Game.getGame(it.instance)!!.getFakeNPC(it.player.uuid)!!
+            if(inputs.forward()) npc.moveForward()
+            if(inputs.backward()) npc.moveBackward()*/ // Entity only moves once every year
+        }
+
         gameNode.addListener(PickupItemEvent::class.java) {
             if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
             if(it.livingEntity !is Player || it.itemStack.material().id() != Material.NAUTILUS_SHELL.id()) return@addListener

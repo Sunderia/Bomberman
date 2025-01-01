@@ -13,7 +13,7 @@ import kotlin.random.Random
 
 class GameMap(name: String) {
 
-    val settings: MapSettings;
+    val settings: MapSettings
 
     data class MapSettings(val maxPlayers: Int, val minPlayers: Int, val path: String, val spawnPoints: List<Pos>)
 
