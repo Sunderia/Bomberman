@@ -8,7 +8,7 @@ import net.minestom.server.entity.attribute.AttributeOperation;
 
 import java.util.function.Consumer;
 
-enum Powerup {
+public enum Powerup {
     FIRE_UP(p -> incrementPower(p, 1)),
     FULL_FIRE(p -> Bomberman.Companion.getPowerMap().put(p.getUuid(), 8)),
     FIRE_DOWN(p -> incrementPower(p, -1)),

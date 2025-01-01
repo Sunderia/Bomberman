@@ -1,14 +1,18 @@
 package fr.sunderia.bomberman.utils
 
 import fr.sunderia.bomberman.Bomberman
+import fr.sunderia.bomberman.Powerup
 import fr.sunderia.bomberman.PrimedTntEntity
+import fr.sunderia.bomberman.party.Game
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
+import net.minestom.server.entity.ItemEntity
 import net.minestom.server.entity.Player
+import net.minestom.server.entity.attribute.Attribute
 import net.minestom.server.entity.metadata.display.ItemDisplayMeta
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.block.Block
@@ -20,6 +24,10 @@ import net.minestom.server.network.packet.server.play.SetCooldownPacket
 
 data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, val leftArm: Entity, val rightLeg: Entity, val leftLeg: Entity) {
 
+    private var isDead = false
+    fun isDead() = isDead
+    fun sameBlock(newPos: Pos) = head.position.sub(.0, 1.0, .0).sameBlock(newPos)
+
     fun remove() {
         head.remove()
         torso.remove()
@@ -27,18 +35,28 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
         leftArm.remove()
         rightLeg.remove()
         leftLeg.remove()
+        isDead = true
     }
 
-    private fun moveFW(mult: Double) {
-        head.velocity = head.position.direction().withY(.0).mul(mult)
-        torso.velocity = torso.position.direction().withY(.0).mul(mult)
-        rightArm.velocity = rightArm.position.direction().withY(.0).mul(mult)
-        leftArm.velocity = leftArm.position.direction().withY(.0).mul(mult)
-        rightLeg.velocity = rightLeg.position.direction().withY(.0).mul(mult)
-        leftLeg.velocity = leftLeg.position.direction().withY(.0).mul(mult)
+    private fun moveFW(player: Player, multiplier: Double) {
+        if(isDead) return
+        val mult = multiplier * 15 * player.getAttributeValue(Attribute.MOVEMENT_SPEED)
+        val direction = head.position.direction()
+        head.velocity = direction.withY(.0).mul(mult)
+        torso.velocity = direction.withY(.0).mul(mult)
+        rightArm.velocity = direction.withY(.0).mul(mult)
+        leftArm.velocity = direction.withY(.0).mul(mult)
+        rightLeg.velocity = direction.withY(.0).mul(mult)
+        leftLeg.velocity = direction.withY(.0).mul(mult)
+        val pos = head.position.direction().mul(-0.01).add(head.position.withY(40.0))
+        val instance = player.instance
+        val block = instance.getBlock(pos)
+        if(!block.isAir) return
+        player.vehicle!!.velocity = direction.withY(.0).mul(mult)
     }
 
     private fun rotate(relativeYaw: Float) {
+        if(isDead) return
         head.teleport(head.position.withYaw(head.position.yaw + relativeYaw))
         torso.teleport(torso.position.withYaw(torso.position.yaw + relativeYaw))
         rightArm.teleport(rightArm.position.withYaw(rightArm.position.yaw + relativeYaw))
@@ -47,11 +65,12 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
         leftLeg.teleport(leftLeg.position.withYaw(leftLeg.position.yaw + relativeYaw))
     }
 
-    fun moveForward() = moveFW(-3.0)
-    fun moveBackward() = moveFW(3.0)
+    fun moveForward(player: Player) = moveFW(player, -3.0)
+    fun moveBackward(player: Player) = moveFW(player, 3.0)
     fun rotateRight() = rotate(90f)
     fun rotateLeft() = rotate(-90f)
     fun placeTNT(player: Player) {
+        if(isDead) return
         // Check if position is valid
         val pos = head.position.direction().mul(-1.0).add(head.position.withY(40.0))
         val instance = player.instance
@@ -73,6 +92,16 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
         if(player.hasTag(PowerupTags.PIERCE.getBool())) {
             tnt.setPierce(true)
         }
+    }
+
+    fun pickupPowerup(game: Game, player: Player) {
+        game.instance.entities.stream()
+            .filter { e -> e.entityType.id() == EntityType.ITEM.id() && this.sameBlock(e.position) }
+            .map { it as ItemEntity }
+            .forEach {
+                Powerup.valueOf(it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!!.strings()[0].uppercase()).effect.accept(player)
+                it.remove()
+            }
     }
 
     companion object {

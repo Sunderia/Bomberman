@@ -1,5 +1,6 @@
 package fr.sunderia.bomberman;
 
+import fr.sunderia.bomberman.party.Game;
 import fr.sunderia.bomberman.utils.CustomDamage;
 import kotlin.random.Random;
 import net.kyori.adventure.key.Key;
@@ -20,6 +21,7 @@ import net.minestom.server.scoreboard.Team;
 import net.minestom.server.utils.PacketSendingUtils;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author <a href=
@@ -37,7 +39,7 @@ public class PrimedTntEntity extends Entity {
 
     public double calculateNextY(double x, double maxPosX) {
         // -3.75 / (minBlock - maxBlock)² * (x - minBlock)(x - maxBlock)
-        return (-3.75f/Math.pow(0.0- maxPosX, 2)) * (x - 0.0) * (x - maxPosX);
+        return (-3.75f/Math.pow(0.0 - maxPosX, 2)) * (x - 0.0) * (x - maxPosX);
     }
 
     public Player getPlayer() {
@@ -56,13 +58,21 @@ public class PrimedTntEntity extends Entity {
         Pos pos = getPosition();
         for (int x = 0; (negative ? x >= -power : x <= power); x += negative ? -1 : 1) {
             Pos newPos = pos.add(isX ? x : 0, 0, isX ? 0 : x);
-            getInstance().getPlayers().stream().filter(
-                    p -> p.getPosition().sameBlock(newPos) && !p.isDead() && p.getGameMode() == GameMode.ADVENTURE)
-                    .forEach(player -> {
+            Game.Companion.getGame(instance).getFakeNPCs().stream()
+                .map(e -> Map.entry(instance.getPlayerByUuid(e.getKey()), e.getValue()))
+                .filter(
+                    e -> e.getValue().sameBlock(newPos) && !e.getValue().isDead())
+                    .forEach(e -> {
+                        var player = e.getKey();
+                        var npc = e.getValue();
+                        npc.remove();
+                        Entity vehicle = player.getVehicle();
+                        vehicle.removePassenger(player);
+                        vehicle.remove();
                         player.damage(new CustomDamage(this));
                         player.kill();
                     });
-            getInstance().getEntities().stream()
+            instance.getEntities().stream()
                     .filter(e -> e.getPosition().sameBlock(newPos))
                     .filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity)
                     .forEach(entity -> {
@@ -92,8 +102,7 @@ public class PrimedTntEntity extends Entity {
     }
 
     private void dropPowerup(Pos pos) {
-        if (Random.Default.nextInt(4) != 0)
-            return;
+        //if (Random.Default.nextInt(4) != 0) return;
         int index = Random.Default.nextInt(Powerup.values().length);
         Powerup powerup = Powerup.values()[index];
         ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).with(meta -> meta.set(ItemComponent.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(powerup.name().toLowerCase()), List.of()))
@@ -126,8 +135,8 @@ public class PrimedTntEntity extends Entity {
         if (--fuseTime != 0)
             return;
         explode();
-        getInstance().setBlock(this.position, Block.AIR);
-        getInstance().setBlock(this.position.add(.0, 1.0, .0), Block.AIR);
+        instance.setBlock(this.position, Block.AIR);
+        instance.setBlock(this.position.add(.0, 1.0, .0), Block.AIR);
         remove();
         if(pierceTeam.getMembers().contains(this.getUuid().toString())) pierceTeam.removeMember(this.getUuid().toString());
     }

@@ -3,10 +3,8 @@ package fr.sunderia.bomberman
 import fr.sunderia.bomberman.Bomberman.Companion.fontKey
 import fr.sunderia.bomberman.Bomberman.Companion.powerMap
 import fr.sunderia.bomberman.party.Game
-import fr.sunderia.bomberman.party.GameStatus
 import fr.sunderia.bomberman.party.Party
 import fr.sunderia.bomberman.utils.Axis
-import fr.sunderia.bomberman.utils.Cooldown
 import fr.sunderia.bomberman.utils.NPC
 import fr.sunderia.bomberman.utils.PositionUtils.Companion.removeBlockAt
 import fr.sunderia.bomberman.utils.PositionUtils.Companion.setBlockAt
@@ -24,10 +22,8 @@ import net.kyori.adventure.title.TitlePart
 import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.GameMode
-import net.minestom.server.entity.Player
 import net.minestom.server.entity.PlayerHand
 import net.minestom.server.event.EventNode
-import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
@@ -41,7 +37,6 @@ import net.minestom.server.item.component.BlockPredicates
 import net.minestom.server.listener.PlayerDiggingListener
 import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket
-import net.minestom.server.network.packet.server.play.SetCooldownPacket
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.TaskSchedule
 import java.net.URI
@@ -59,11 +54,12 @@ class Listeners {
         extensionNode.addListener(AsyncPlayerConfigurationEvent::class.java) { it.spawningInstance = container }
         //extensionNode.addListener(PlayerSkinInitEvent::class.java) { it.skin = PlayerSkin.fromUuid(it.player.uuid.toString()) }
 
-        /*extensionNode.addListener(PlayerChatEvent::class.java) {
-            val gameMode = GameMode.entries.find { gm -> it.message.uppercase().contains(gm.name) } ?: return@addListener
+        extensionNode.addListener(PlayerChatEvent::class.java) {
+            if(it.player.username != "minemobs") return@addListener
+            val gameMode = GameMode.entries.find { gm -> it.rawMessage.uppercase().contains(gm.name) } ?: return@addListener
             it.isCancelled = true
             it.player.gameMode = gameMode
-        }*/
+        }
 
         extensionNode.addListener(PlayerDisconnectEvent::class.java) {
             Party.removePlayerFromParty(it.player)
@@ -130,28 +126,9 @@ class Listeners {
             }, TaskSchedule.immediate())
         }
 
-        gameNode.addListener(PlayerMoveEvent::class.java) {
-            /*if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
-            val inputs = it.player.inputs()
-            val npc = Game.getGame(it.instance)!!.getFakeNPC(it.player.uuid)!!
-            if(inputs.forward()) npc.moveForward()
-            if(inputs.backward()) npc.moveBackward()*/ // Entity only moves once every year
-        }
-
-        gameNode.addListener(PickupItemEvent::class.java) {
-            if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
-            if(it.livingEntity !is Player || it.itemStack.material().id() != Material.NAUTILUS_SHELL.id()) return@addListener
-            val player = it.entity as Player
-            if (player.gameMode != GameMode.ADVENTURE) {
-                it.isCancelled = true
-                return@addListener
-            }
-            Powerup.valueOf(it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!!.strings()[0].uppercase()).effect.accept(player)
-        }
-
         gameNode.addListener(PlayerSpawnEvent::class.java) {
             val player = it.player
-            player.gameMode = GameMode.CREATIVE
+            player.gameMode = GameMode.ADVENTURE
             player.teleport(spawn)
             player.respawnPoint = spawn
             if(it.isFirstSpawn) {
@@ -223,37 +200,6 @@ class Listeners {
             winner.teleport(spawn)
             val game = Game.getGame(event.instance)!!
             game.endGame()
-        }
-
-        gameNode.addListener(PlayerBlockPlaceEvent::class.java) {
-            if(!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
-            if(it.block.id() != Block.TNT.id()) return@addListener
-            it.isCancelled = true
-
-            val player = it.player
-            if(player.gameMode != GameMode.ADVENTURE && player.gameMode != GameMode.CREATIVE) return@addListener
-            if(Game.getGame(it.instance)!!.gameStatus != GameStatus.RUNNING) return@addListener
-
-            val blockBelowPlayer = player.instance.getBlock(it.blockPosition.sub(.0, 1.0, .0))
-            if(blockBelowPlayer.id() != Block.STONE.id() || player.instance.getBlock(it.blockPosition.add(.0, 1.0, .0)).isSolid) return@addListener
-            if (Cooldown.isInCooldown(it.player.uuid, "tnt")) return@addListener
-
-            it.isCancelled = false
-            it.player.playerConnection.sendPacket(SetCooldownPacket(Material.TNT.name(), 0))
-            it.consumeBlock(false)
-            it.block = Block.BARRIER
-
-            if (player.gameMode == GameMode.ADVENTURE) {
-                val timeInSeconds = 2
-                val c = Cooldown(it.player.uuid, "tnt", timeInSeconds)
-                c.start()
-                val packet = SetCooldownPacket(Material.TNT.name(), timeInSeconds * 20)
-                it.player.playerConnection.sendPacket(packet)
-            }
-            val tnt = PrimedTntEntity(it.player, it.instance, it.blockPosition.add(0.5, 0.0, 0.5))
-            if(player.hasTag(PowerupTags.PIERCE.getBool())) {
-                tnt.setPierce(true)
-            }
         }
 
         extensionNode.addChild(lobbyNode)

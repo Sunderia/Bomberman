@@ -6,6 +6,7 @@ import fr.sunderia.bomberman.Bomberman.Companion.powerMap
 import fr.sunderia.bomberman.GameMap
 import fr.sunderia.bomberman.InstanceCreator.Companion.createInstanceContainer
 import fr.sunderia.bomberman.InstanceCreator.Companion.generateStructure
+import fr.sunderia.bomberman.Powerup
 import fr.sunderia.bomberman.utils.FakeNPC
 import fr.sunderia.bomberman.utils.PowerupTags
 import net.kyori.adventure.bossbar.BossBar
@@ -89,14 +90,14 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
             it.instance = Bomberman.getLobbyInstance()
             it.inventory.clear()
         }
-        removeGame(this.instance)
+        removeGame(instance)
     }
 
     fun endGame() {
         this.gameStatus = GameStatus.ENDING
         scheduler.submitTask {
             if (this.timeLeftBeforeClose == 0) {
-                resetGame(this.instance)
+                resetGame()
                 this.closeGame()
                 return@submitTask TaskSchedule.stop()
             }
@@ -106,7 +107,7 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         }
     }
 
-    private fun resetGame(instance: Instance) {
+    private fun resetGame() {
         playerNPCMap.values.forEach { it.remove() }
         playerNPCMap.clear()
         powerMap.replaceAll { _, _ -> 2 }
@@ -129,14 +130,14 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
             .forEach { obj: Entity -> obj.remove() }
     }
 
-    fun showBossbar(player: Player) {
-        player.showBossBar(bossbar)
-    }
+    fun showBossbar(player: Player) = player.showBossBar(bossbar)
+    fun getFakeNPCs() = playerNPCMap.entries
 
     fun spawnPlayer(player: Player) {
         val spawnPoints = map.settings.spawnPoints
         val pos = spawnPoints[playerSpawnCounter % spawnPoints.size].add(.5, .0, .5)
         player.teleport(pos)
+        for(i in 0..9) Powerup.SPEED_UP.effect.accept(player)
         playerSpawnCounter++
         val entity = Entity(EntityType.ARMOR_STAND)
         val meta = entity.entityMeta as ArmorStandMeta
@@ -150,13 +151,16 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         z += (z / abs(z))
         entity.setInstance(instance, Pos(x,y,z))
         entity.addPassenger(player)
+        entity.aerodynamics = entity.aerodynamics.withVerticalAirResistance(0.7).withHorizontalAirResistance(0.7)
         playerNPCMap[player.uuid] = FakeNPC.createFakeNPC(instance, pos)
         player.scheduler().submitTask({
             val game = getGame(player.instance) ?: return@submitTask TaskSchedule.stop()
             val npc = game.getFakeNPC(player.uuid) ?: return@submitTask TaskSchedule.stop()
+            if(npc.isDead()) return@submitTask TaskSchedule.stop()
+            npc.pickupPowerup(game, player)
             val inputs = player.inputs()
-            if(inputs.forward()) npc.moveForward()
-            if(inputs.backward()) npc.moveBackward()
+            if(inputs.forward()) npc.moveForward(player)
+            if(inputs.backward()) npc.moveBackward(player)
             if(inputs.right()) npc.rotateRight()
             if(inputs.left()) npc.rotateLeft()
             if(inputs.jump()) npc.placeTNT(player)
@@ -174,7 +178,10 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
 
         fun getGame(instance: Instance) = games[instance]
 
-        fun removeGame(instance: Instance) = games.remove(instance)
+        fun removeGame(instance: Instance) {
+            getGame(instance)!!.resetGame()
+            games.remove(instance)
+        }
 
         fun createGame(manager: InstanceManager, map: GameMap): InstanceContainer {
             val container = createInstanceContainer(manager)
