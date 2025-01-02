@@ -14,7 +14,6 @@ repositories {
 }
 
 dependencies {
-    implementation("org.joml:joml:1.10.8")
 	implementation("net.minestom:minestom-snapshots:1_21_4-f8e052b05c")
     implementation("commons-codec:commons-codec:1.16.1")
     runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
