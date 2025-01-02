@@ -54,7 +54,7 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         BossBar.Overlay.PROGRESS
     )
 
-    private fun getFakeNPC(uuid: UUID) = playerNPCMap[uuid]
+    fun getFakeNPC(uuid: UUID) = playerNPCMap[uuid]
 
     private fun bossBarText() = text("${"\uE101".repeat(2)}${timeLimit.toString().toCharArray().map { Char(0xE400 + it.digitToInt()) }.joinToString("")}")
         .style { it.color(NamedTextColor.RED).font(fontKey) }

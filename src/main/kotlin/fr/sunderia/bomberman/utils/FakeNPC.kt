@@ -74,9 +74,9 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
     fun rotateLeft(player: Player, game: Game) { rotate(-90f); move(player, game, 3.0, defaultYaw + 90.0f) }
     fun placeTNT(player: Player) {
         if(isDead) return
+        val instance = player.instance
         // Check if position is valid
         val pos = head.position.direction().mul(-1.0).add(head.position.withY(40.0))
-        val instance = player.instance
         val block = instance.getBlock(pos)
         if (!block.isAir) return
         //if(Game.getGame(player.instance)!!.gameStatus != GameStatus.RUNNING) return
@@ -102,6 +102,14 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
                 Powerup.valueOf(it.itemStack.get(ItemComponent.CUSTOM_MODEL_DATA)!!.strings()[0].uppercase()).effect.accept(player)
                 it.remove()
             }
+    }
+
+    fun getBlockInFront(): Pair<Pos?, Block?> {
+        val pos = head.position.direction().mul(-0.5).add(head.position.withY(40.0))
+        val instance = head.instance ?: return (null to null)
+        val block = instance.getBlock(pos)
+        if (block.isAir) return (null to null)
+        return (pos.asPosition() to block)
     }
 
     companion object {
