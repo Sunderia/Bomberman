@@ -82,7 +82,9 @@ class PartyCommand: Command("party", "p") {
 
         addSyntax({ sender: CommandSender, context: CommandContext ->
             if(sender !is Player) return@addSyntax
-            val target = context.get(playerName).find(sender)[0] as Player
+            val find = context.get(playerName).find(sender)
+            if(find.isEmpty()) return@addSyntax
+            val target = find[0] as Player
             val subCommandType = context.get(subcommand)
             if(subCommandType == SubCommand.INVITE) {
                 val party = getParty(sender)

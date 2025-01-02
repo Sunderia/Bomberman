@@ -1,6 +1,5 @@
 package fr.sunderia.bomberman.utils
 
-import fr.sunderia.bomberman.Bomberman
 import fr.sunderia.bomberman.Powerup
 import fr.sunderia.bomberman.PrimedTntEntity
 import fr.sunderia.bomberman.party.Game
@@ -21,9 +20,11 @@ import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.component.HeadProfile
 import net.minestom.server.network.packet.server.play.SetCooldownPacket
+import kotlin.math.abs
 
 data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, val leftArm: Entity, val rightLeg: Entity, val leftLeg: Entity) {
 
+    private var defaultYaw = head.position.yaw
     private var isDead = false
     fun isDead() = isDead
     fun sameBlock(newPos: Pos) = head.position.sub(.0, 1.0, .0).sameBlock(newPos)
@@ -38,48 +39,47 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
         isDead = true
     }
 
-    private fun moveFW(player: Player, multiplier: Double) {
+    private fun move(player: Player, game: Game, multiplier: Double, yaw: Float = defaultYaw) {
         if(isDead) return
+        val camera = game.getCamera(player) ?: return
         val mult = multiplier * 15 * player.getAttributeValue(Attribute.MOVEMENT_SPEED)
-        val direction = head.position.direction()
-        head.velocity = direction.withY(.0).mul(mult)
-        torso.velocity = direction.withY(.0).mul(mult)
-        rightArm.velocity = direction.withY(.0).mul(mult)
-        leftArm.velocity = direction.withY(.0).mul(mult)
-        rightLeg.velocity = direction.withY(.0).mul(mult)
-        leftLeg.velocity = direction.withY(.0).mul(mult)
-        val pos = head.position.direction().mul(-0.01).add(head.position.withY(40.0))
+        val direction = head.position.withYaw(yaw).direction().withY(.0)
+        head.velocity = direction.mul(mult)
+        torso.velocity = direction.mul(mult)
+        rightArm.velocity = direction.mul(mult)
+        leftArm.velocity = direction.mul(mult)
+        rightLeg.velocity = direction.mul(mult)
+        leftLeg.velocity = direction.mul(mult)
+        val pos = direction.mul(0.5 * abs(multiplier) / multiplier).add(head.position.withY(40.0).withYaw(0f))
         val instance = player.instance
         val block = instance.getBlock(pos)
         if(!block.isAir) return
-        player.vehicle!!.velocity = direction.withY(.0).mul(mult)
+        camera.velocity = direction.mul(mult)
     }
 
     private fun rotate(relativeYaw: Float) {
         if(isDead) return
-        head.teleport(head.position.withYaw(head.position.yaw + relativeYaw))
-        torso.teleport(torso.position.withYaw(torso.position.yaw + relativeYaw))
-        rightArm.teleport(rightArm.position.withYaw(rightArm.position.yaw + relativeYaw))
-        leftArm.teleport(leftArm.position.withYaw(leftArm.position.yaw + relativeYaw))
-        rightLeg.teleport(rightLeg.position.withYaw(rightLeg.position.yaw + relativeYaw))
-        leftLeg.teleport(leftLeg.position.withYaw(leftLeg.position.yaw + relativeYaw))
+        val newYaw = defaultYaw + relativeYaw
+        head.teleport(head.position.withYaw(newYaw))
+        torso.teleport(torso.position.withYaw(newYaw))
+        rightArm.teleport(rightArm.position.withYaw(newYaw))
+        leftArm.teleport(leftArm.position.withYaw(newYaw))
+        rightLeg.teleport(rightLeg.position.withYaw(newYaw))
+        leftLeg.teleport(leftLeg.position.withYaw(newYaw))
     }
 
-    fun moveForward(player: Player) = moveFW(player, -3.0)
-    fun moveBackward(player: Player) = moveFW(player, 3.0)
-    fun rotateRight() = rotate(90f)
-    fun rotateLeft() = rotate(-90f)
+    fun moveForward(player: Player, game: Game) { rotate(0f); move(player, game, -3.0) }
+    fun moveBackward(player: Player, game: Game) { rotate(180f); move(player, game, 3.0) }
+    fun rotateRight(player: Player, game: Game) { rotate(90f); move(player, game, 3.0, defaultYaw - 90.0f) }
+    fun rotateLeft(player: Player, game: Game) { rotate(-90f); move(player, game, 3.0, defaultYaw + 90.0f) }
     fun placeTNT(player: Player) {
         if(isDead) return
         // Check if position is valid
         val pos = head.position.direction().mul(-1.0).add(head.position.withY(40.0))
         val instance = player.instance
         val block = instance.getBlock(pos)
-        if (!block.isAir) {
-            Bomberman.logger.info("Cannot place TNT on ${block.name()} at $pos")
-            return
-        }
-        // if(Game.getGame(player.instance)!!.gameStatus != GameStatus.RUNNING) return
+        if (!block.isAir) return
+        //if(Game.getGame(player.instance)!!.gameStatus != GameStatus.RUNNING) return
         if (Cooldown.isInCooldown(player.uuid, "tnt")) return
         player.playerConnection.sendPacket(SetCooldownPacket(Material.TNT.name(), 0))
         instance.setBlock(pos, Block.BARRIER)
@@ -154,6 +154,12 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
             )
         }
     }
+}
+
+private operator fun FloatArray.times(relativeYaw: Float): FloatArray {
+    val arr = clone()
+    for(i in arr.indices) arr[i] *= relativeYaw
+    return arr
 }
 
 private fun Pos.toBlockPos(): Pos = Pos(blockX() + .0, blockY() + .0, blockZ() + .0)

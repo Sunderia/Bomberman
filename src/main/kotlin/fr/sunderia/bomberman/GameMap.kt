@@ -15,7 +15,7 @@ class GameMap(name: String) {
 
     val settings: MapSettings
 
-    data class MapSettings(val maxPlayers: Int, val minPlayers: Int, val path: String, val spawnPoints: List<Pos>)
+    data class MapSettings(val path: String, val timeLimit: Int, val maxPlayers: Int, val minPlayers: Int, val spawnPoints: List<Pos>)
 
     init {
         settings = Bomberman::class.java.getResourceAsStream("/maps/$name.json")!!.reader()

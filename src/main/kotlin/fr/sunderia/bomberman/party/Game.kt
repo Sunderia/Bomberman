@@ -29,18 +29,18 @@ import net.minestom.server.timer.SchedulerManager
 import net.minestom.server.timer.TaskSchedule
 import java.util.*
 import kotlin.math.abs
-import kotlin.math.floor
 
 data class Game(val instance: InstanceContainer, val map: GameMap) {
     var gameStatus: GameStatus = GameStatus.WAITING
     private val playerNPCMap = mutableMapOf<UUID, FakeNPC>()
+    private val playerCameraMap = mutableMapOf<UUID, Entity>()
     private var playerSpawnCounter = 0
     private val scheduler: SchedulerManager = MinecraftServer.getSchedulerManager()
     private var timeLeftBeforeClose = 5
     private var timeLeftBeforeStart = 10
     private var playersAtStartOfGame = 0
     // Time left until sudden death
-    private var timeLimit = 60
+    private var timeLimit = map.settings.timeLimit
     /*
     bossbar set bomberman:timer name [
         {"text": "\uE101\uE101\uE101\uE101\uE402\uE407", "color": "red", "font": "bomberman:font"},
@@ -56,22 +56,27 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
 
     private fun getFakeNPC(uuid: UUID) = playerNPCMap[uuid]
 
-    private fun bossBarText() = text("${"\uE101".repeat(2)}${Char(0xE400 + floor(timeLimit / 10f).toInt())}${Char(0xE400 + (timeLimit % 10))}")
+    private fun bossBarText() = text("${"\uE101".repeat(2)}${timeLimit.toString().toCharArray().map { Char(0xE400 + it.digitToInt()) }.joinToString("")}")
         .style { it.color(NamedTextColor.RED).font(fontKey) }
         .append(text("${"\uE100".repeat(4)}${"\uE102"}\uE200").style { it.shadowColor(ShadowColor.none()) })
 
     init {
         scheduler.submitTask {
             if(timeLeftBeforeStart == 0) {
-                if(gameStatus == GameStatus.RUNNING && timeLimit > 0) {
-                    timeLimit--
-                    bossbar.name(bossBarText())
-                    return@submitTask TaskSchedule.seconds(1)
+                if(gameStatus == GameStatus.RUNNING) {
+                    if(timeLimit > 0) {
+                        timeLimit--
+                        bossbar.name(bossBarText())
+                        return@submitTask TaskSchedule.seconds(1)
+                    }
+                    // TODO: Sudden death
+                    return@submitTask TaskSchedule.stop()
                 }
                 if(gameStatus == GameStatus.ENDING) return@submitTask TaskSchedule.stop()
                 instance.sendMessage(text("Starting game"))
                 gameStatus = GameStatus.RUNNING
                 playersAtStartOfGame = instance.players.size
+                instance.players.forEach { it.updateViewerRule() }
                 return@submitTask TaskSchedule.seconds(1)
             }
             if(instance.players.size >= 2) {
@@ -95,9 +100,9 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
 
     fun endGame() {
         this.gameStatus = GameStatus.ENDING
+        resetGame()
         scheduler.submitTask {
             if (this.timeLeftBeforeClose == 0) {
-                resetGame()
                 this.closeGame()
                 return@submitTask TaskSchedule.stop()
             }
@@ -110,9 +115,14 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
     private fun resetGame() {
         playerNPCMap.values.forEach { it.remove() }
         playerNPCMap.clear()
+        playerCameraMap.values.forEach { it.remove() }
+        playerCameraMap.clear()
         powerMap.replaceAll { _, _ -> 2 }
-        instance.players.forEach { p: Player ->
+        instance.players.forEach { p ->
+            p.updateViewerRule() //TODO: Fix player not being invisible
+            p.hideBossBar(bossbar)
             p.clearEffects()
+
             val uuids = p.getAttribute(Attribute.MOVEMENT_SPEED).modifiers().stream()
                     .map { obj-> obj.id }
                     .toList().toTypedArray()
@@ -132,6 +142,7 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
 
     fun showBossbar(player: Player) = player.showBossBar(bossbar)
     fun getFakeNPCs() = playerNPCMap.entries
+    fun getCamera(player: Player) = playerCameraMap[player.uuid]
 
     fun spawnPlayer(player: Player) {
         val spawnPoints = map.settings.spawnPoints
@@ -146,11 +157,12 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         meta.isCustomNameVisible = false
         entity.setNoGravity(true)
         var (x, y, z) = pos
-        y += 3
-        x += (x / abs(x))
-        z += (z / abs(z))
-        entity.setInstance(instance, Pos(x,y,z))
-        entity.addPassenger(player)
+        y += 5
+        x += (x / abs(x)) * 0.5
+        z += (z / abs(z)) * 0.5
+        entity.setInstance(instance, Pos(x,y,z, pos.yaw + 90+45, 75f))
+        player.spectate(entity)
+        playerCameraMap[player.uuid] = entity
         entity.aerodynamics = entity.aerodynamics.withVerticalAirResistance(0.7).withHorizontalAirResistance(0.7)
         playerNPCMap[player.uuid] = FakeNPC.createFakeNPC(instance, pos)
         player.scheduler().submitTask({
@@ -159,13 +171,13 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
             if(npc.isDead()) return@submitTask TaskSchedule.stop()
             npc.pickupPowerup(game, player)
             val inputs = player.inputs()
-            if(inputs.forward()) npc.moveForward(player)
-            if(inputs.backward()) npc.moveBackward(player)
-            if(inputs.right()) npc.rotateRight()
-            if(inputs.left()) npc.rotateLeft()
+            if(inputs.forward()) npc.moveForward(player, game)
+            if(inputs.backward()) npc.moveBackward(player, game)
+            if(inputs.right()) npc.rotateRight(player, game)
+            if(inputs.left()) npc.rotateLeft(player, game)
             if(inputs.jump()) npc.placeTNT(player)
             return@submitTask TaskSchedule.tick(3)
-        }, ExecutionType.TICK_END)
+        }, ExecutionType.TICK_START)
     }
 
     companion object {
@@ -179,7 +191,6 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         fun getGame(instance: Instance) = games[instance]
 
         fun removeGame(instance: Instance) {
-            getGame(instance)!!.resetGame()
             games.remove(instance)
         }
 

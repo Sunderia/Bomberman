@@ -10,6 +10,7 @@ import net.minestom.server.instance.InstanceManager
 class GameCommand: Command("game") {
     companion object {
         fun startGame(sender: Player, manager: InstanceManager = MinecraftServer.getInstanceManager()) {
+            if(Game.getGame(sender.instance) != null) return
             val party = Party.getParty(sender)
             if(party != null && party.playerList.size != 0) {
                 party.warp(Game.createGame(manager, GameMap.random(party.playerList.size)))

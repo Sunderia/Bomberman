@@ -3,6 +3,7 @@ package fr.sunderia.bomberman
 import fr.sunderia.bomberman.Bomberman.Companion.fontKey
 import fr.sunderia.bomberman.Bomberman.Companion.powerMap
 import fr.sunderia.bomberman.party.Game
+import fr.sunderia.bomberman.party.GameStatus
 import fr.sunderia.bomberman.party.Party
 import fr.sunderia.bomberman.utils.Axis
 import fr.sunderia.bomberman.utils.NPC
@@ -22,6 +23,7 @@ import net.kyori.adventure.title.TitlePart
 import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.GameMode
+import net.minestom.server.entity.Player
 import net.minestom.server.entity.PlayerHand
 import net.minestom.server.event.EventNode
 import net.minestom.server.event.player.*
@@ -29,11 +31,8 @@ import net.minestom.server.instance.Instance
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.block.Block
 import net.minestom.server.instance.block.BlockFace
-import net.minestom.server.instance.block.predicate.BlockPredicate
-import net.minestom.server.item.ItemComponent
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
-import net.minestom.server.item.component.BlockPredicates
 import net.minestom.server.listener.PlayerDiggingListener
 import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket
@@ -126,12 +125,22 @@ class Listeners {
             }, TaskSchedule.immediate())
         }
 
+        gameNode.addListener(PlayerBlockPlaceEvent::class.java) {
+            it.isCancelled = true
+        }
+
         gameNode.addListener(PlayerSpawnEvent::class.java) {
             val player = it.player
             player.gameMode = GameMode.ADVENTURE
             player.teleport(spawn)
             player.respawnPoint = spawn
             if(it.isFirstSpawn) {
+                player.updateViewerRule { p ->
+                    if(p !is Player) return@updateViewerRule true
+                    val game = Game.getGame(p.instance) ?: return@updateViewerRule true
+                    if (game.gameStatus != GameStatus.RUNNING) return@updateViewerRule true
+                    false
+                }
                 //Disables Death screen
                 player.sendPacket(ChangeGameStatePacket(ChangeGameStatePacket.Reason.ENABLE_RESPAWN_SCREEN, 1f))
                 it.player.sendMessage(
@@ -148,15 +157,13 @@ class Listeners {
                     .uri(URI.create("https://raw.githubusercontent.com/Sunderia/Bomberman/main/bomberman.zip"))
                 ))
             }
+            player.updateViewerRule()
             if(!it.spawnInstance.hasTag(Tag.Boolean("game"))) return@addListener
             val game = Game.getGame(player.instance)!!
+            player.gameMode = GameMode.SPECTATOR
             game.spawnPlayer(player)
             player.lookAt(Pos(.0, 40.0, .0))
-            player.inventory.addItemStack(ItemStack.of(Material.TNT).with {
-                it
-                    .set(ItemComponent.CAN_PLACE_ON, BlockPredicates(listOf(BlockPredicate(Block.STONE, Block.BRICKS))))
-                    .set(ItemComponent.CAN_BREAK, BlockPredicates(listOf(BlockPredicate(Block.BARRIER)))).build()
-            })
+            player.inventory.addItemStack(ItemStack.of(Material.TNT))
 
             powerMap[player.uuid] = 2
             game.showBossbar(player)

@@ -25,7 +25,7 @@ import java.util.Map;
 
 /**
  * @author <a href=
- *         "https://github.com/Minestom/VanillaReimplementation/blob/e0c3e8a8c5a100522bef07f224e8c6e0671d155e/entities/src/main/java/net/minestom/vanilla/entities/item/PrimedTNTEntity.java">Minestom/VanillaReimplementation</a>
+ * "https://github.com/Minestom/VanillaReimplementation/blob/e0c3e8a8c5a100522bef07f224e8c6e0671d155e/entities/src/main/java/net/minestom/vanilla/entities/item/PrimedTNTEntity.java">Minestom/VanillaReimplementation</a>
  */
 public class PrimedTntEntity extends Entity {
 
@@ -39,7 +39,7 @@ public class PrimedTntEntity extends Entity {
 
     public double calculateNextY(double x, double maxPosX) {
         // -3.75 / (minBlock - maxBlock)² * (x - minBlock)(x - maxBlock)
-        return (-3.75f/Math.pow(0.0 - maxPosX, 2)) * (x - 0.0) * (x - maxPosX);
+        return (-3.75f / Math.pow(0.0 - maxPosX, 2)) * (x - 0.0) * (x - maxPosX);
     }
 
     public Player getPlayer() {
@@ -58,35 +58,36 @@ public class PrimedTntEntity extends Entity {
         Pos pos = getPosition();
         for (int x = 0; (negative ? x >= -power : x <= power); x += negative ? -1 : 1) {
             Pos newPos = pos.add(isX ? x : 0, 0, isX ? 0 : x);
-            Game.Companion.getGame(instance).getFakeNPCs().stream()
+            Game game = Game.Companion.getGame(instance);
+            var entries = game.getFakeNPCs().stream()
                 .map(e -> Map.entry(instance.getPlayerByUuid(e.getKey()), e.getValue()))
-                .filter(
-                    e -> e.getValue().sameBlock(newPos) && !e.getValue().isDead())
-                    .forEach(e -> {
-                        var player = e.getKey();
-                        var npc = e.getValue();
-                        npc.remove();
-                        Entity vehicle = player.getVehicle();
-                        vehicle.removePassenger(player);
-                        vehicle.remove();
-                        player.damage(new CustomDamage(this));
-                        player.kill();
-                    });
+                .filter(e -> e.getValue().sameBlock(newPos) && !e.getValue().isDead()).toList();
+            for (var entry : entries) {
+                var player = entry.getKey();
+                var npc = entry.getValue();
+                npc.remove();
+                player.stopSpectating();
+                game.getCamera(player).remove();
+                player.damage(new CustomDamage(this));
+                player.kill();
+            }
+
             instance.getEntities().stream()
-                    .filter(e -> e.getPosition().sameBlock(newPos))
-                    .filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity)
-                    .forEach(entity -> {
-                        if(!(entity instanceof PrimedTntEntity tnt)) {
-                            entity.remove();
-                            return;
-                        }
-                        tnt.setFuseTime(1);
-                    });
+                .filter(e -> e.getPosition().sameBlock(newPos))
+                .filter(e -> e.getEntityType().id() == EntityType.ITEM.id() || e instanceof PrimedTntEntity)
+                .forEach(entity -> {
+                    if (!(entity instanceof PrimedTntEntity tnt)) {
+                        entity.remove();
+                        return;
+                    }
+                    if (entity.getUuid().equals(getUuid())) return;
+                    tnt.setFuseTime(1);
+                });
             ParticlePacket packet = new ParticlePacket(Particle.SMOKE, newPos.x() + .5,
-                    newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 0, 10);
+                newPos.y() + .5, newPos.z() + .5, 0, 0, 0, 0, 10);
             PacketSendingUtils.sendPacket(getViewersAsAudience(), packet);
             PacketSendingUtils.sendPacket(getViewersAsAudience(), new ParticlePacket(Particle.LAVA,
-                    newPos.x(), newPos.y() + .5, newPos.z(), 0, 0, 0, 0, 10));
+                newPos.x(), newPos.y() + .5, newPos.z(), 0, 0, 0, 0, 10));
             int id = getInstance().getBlock(newPos).id();
             if (id != Block.AIR.id() && id != Block.BARRIER.id()) {
                 if (id == Block.BRICKS.id()) {
@@ -95,18 +96,18 @@ public class PrimedTntEntity extends Entity {
                     if (getInstance().getBlock(newPos.add(0, 1, 0)).id() == Block.BARRIER.id())
                         getInstance().setBlock(newPos.add(0, 1, 0), Block.AIR);
                 }
-                if(!isAPierceBomb()) break;
-                if(id == Block.STONE.id()) break;
+                if (!isAPierceBomb()) break;
+                if (id == Block.STONE.id()) break;
             }
         }
     }
 
     private void dropPowerup(Pos pos) {
-        //if (Random.Default.nextInt(4) != 0) return;
+        if (Random.Default.nextInt(4) != 0) return;
         int index = Random.Default.nextInt(Powerup.values().length);
         Powerup powerup = Powerup.values()[index];
         ItemStack is = ItemStack.of(Material.NAUTILUS_SHELL).with(meta -> meta.set(ItemComponent.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(powerup.name().toLowerCase()), List.of()))
-                .set(ItemComponent.ITEM_NAME, Component.text(powerup.name().replace("_", " ").toLowerCase())));
+            .set(ItemComponent.ITEM_NAME, Component.text(powerup.name().replace("_", " ").toLowerCase())));
         ItemEntity item = new ItemEntity(is);
         item.setInstance(getInstance(), pos);
     }
@@ -138,7 +139,8 @@ public class PrimedTntEntity extends Entity {
         instance.setBlock(this.position, Block.AIR);
         instance.setBlock(this.position.add(.0, 1.0, .0), Block.AIR);
         remove();
-        if(pierceTeam.getMembers().contains(this.getUuid().toString())) pierceTeam.removeMember(this.getUuid().toString());
+        if (pierceTeam.getMembers().contains(this.getUuid().toString()))
+            pierceTeam.removeMember(this.getUuid().toString());
     }
 
     public boolean isAPierceBomb() {
