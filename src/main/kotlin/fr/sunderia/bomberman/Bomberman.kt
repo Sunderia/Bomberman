@@ -38,6 +38,7 @@ fun main() {
 class Bomberman {
 
     companion object {
+        val DEBUG_MODE: Boolean = System.getenv().containsKey("DEBUG_MODE")
         val gson = Gson()
         val logger: Logger = Logger.getLogger("Bomberman")
 

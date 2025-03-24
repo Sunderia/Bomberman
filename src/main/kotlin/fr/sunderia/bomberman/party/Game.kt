@@ -29,6 +29,7 @@ import net.minestom.server.timer.SchedulerManager
 import net.minestom.server.timer.TaskSchedule
 import java.util.*
 import kotlin.math.abs
+import kotlin.random.Random
 
 data class Game(val instance: InstanceContainer, val map: GameMap) {
     var gameStatus: GameStatus = GameStatus.WAITING
@@ -146,8 +147,8 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
 
     fun spawnPlayer(player: Player) {
         val spawnPoints = map.settings.spawnPoints
-        val pos = spawnPoints[playerSpawnCounter % spawnPoints.size].add(.5, .0, .5)
-        player.teleport(pos)
+        val pos = spawnPoints[if (Bomberman.DEBUG_MODE) Random.Default.nextInt(spawnPoints.size) else playerSpawnCounter % spawnPoints.size].add(.5, .0, .5)
+        player.teleport(pos.toPos())
         for(i in 0..9) Powerup.SPEED_UP.effect.accept(player)
         playerSpawnCounter++
         val entity = Entity(EntityType.ARMOR_STAND)
@@ -156,15 +157,15 @@ data class Game(val instance: InstanceContainer, val map: GameMap) {
         meta.isMarker = true
         meta.isCustomNameVisible = false
         entity.setNoGravity(true)
-        var (x, y, z) = pos
+        var (x, y, z, _, cameraYaw) = pos
         y += 5
         x += (x / abs(x)) * 0.5
         z += (z / abs(z)) * 0.5
-        entity.setInstance(instance, Pos(x,y,z, pos.yaw + 90+45, 75f))
+        entity.setInstance(instance, Pos(x,y,z, cameraYaw, 75f))
         player.spectate(entity)
         playerCameraMap[player.uuid] = entity
         entity.aerodynamics = entity.aerodynamics.withVerticalAirResistance(0.7).withHorizontalAirResistance(0.7)
-        playerNPCMap[player.uuid] = FakeNPC.createFakeNPC(instance, pos)
+        playerNPCMap[player.uuid] = FakeNPC.createFakeNPC(instance, pos.toPos())
         player.scheduler().submitTask({
             val game = getGame(player.instance) ?: return@submitTask TaskSchedule.stop()
             val npc = game.getFakeNPC(player.uuid) ?: return@submitTask TaskSchedule.stop()

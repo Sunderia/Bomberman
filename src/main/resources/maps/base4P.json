@@ -9,42 +9,42 @@
       "y": 40,
       "z": 13,
       "yaw": 0,
-      "pitch": 0
+      "cameraYaw": 135
     },
     {
       "x": -7,
       "y": 40,
       "z": 13,
       "yaw": 0,
-      "pitch": 0
+      "cameraYaw": -135
     },
     {
       "x": 5,
       "y": 40,
       "z": 0,
       "yaw": 90,
-      "pitch": 0
+      "cameraYaw": 90
     },
     {
       "x": -7,
       "y": 40,
       "z": -1,
       "yaw": 90,
-      "pitch": 0
+      "cameraYaw": -90
     },
     {
       "x": 5,
       "y": 40,
       "z": -15,
       "yaw": 180,
-      "pitch": 0
+      "cameraYaw": 45
     },
     {
       "x": -7,
       "y": 40,
       "z": -15,
       "yaw": 180,
-      "pitch": 0
+      "cameraYaw": -45
     }
   ]
 }

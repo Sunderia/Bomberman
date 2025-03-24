@@ -26,11 +26,11 @@ class InstanceCreator {
             val batch = AbsoluteBlockBatch()
             for ((vec, block) in blocks1) {
                 if (block.isAir) continue
-                if (block.id() == Block.BRICKS.id() && Random.nextInt(3) == 2) continue
-                batch.setBlock(startPos.add(vec), block)
                 if (block.id() == Block.BRICKS.id()) {
+                    if (Random.nextInt(3) == 2) continue
                     batch.setBlock(startPos.add(vec.add(0.0, 1.0, 0.0)), Block.BARRIER)
                 }
+                batch.setBlock(startPos.add(vec), block)
             }
             getAffectedChunks(batch).let {
                 ChunkUtils.optionalLoadAll(container, it, null)

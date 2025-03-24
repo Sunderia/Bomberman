@@ -20,7 +20,7 @@ import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.component.HeadProfile
 import net.minestom.server.network.packet.server.play.SetCooldownPacket
-import kotlin.math.abs
+import kotlin.math.sign
 
 data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, val leftArm: Entity, val rightLeg: Entity, val leftLeg: Entity) {
 
@@ -44,17 +44,17 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
         val camera = game.getCamera(player) ?: return
         val mult = multiplier * 15 * player.getAttributeValue(Attribute.MOVEMENT_SPEED)
         val direction = head.position.withYaw(yaw).direction().withY(.0)
+        val pos = direction.mul(0.5 * sign(mult)).add(head.position.withY(40.0).withYaw(0f))
+        val instance = player.instance
+        val block = instance.getBlock(pos)
+        if(!block.isAir) return
         head.velocity = direction.mul(mult)
         torso.velocity = direction.mul(mult)
         rightArm.velocity = direction.mul(mult)
         leftArm.velocity = direction.mul(mult)
         rightLeg.velocity = direction.mul(mult)
         leftLeg.velocity = direction.mul(mult)
-        val pos = direction.mul(0.5 * abs(multiplier) / multiplier).add(head.position.withY(40.0).withYaw(0f))
-        val instance = player.instance
-        val block = instance.getBlock(pos)
-        if(!block.isAir) return
-        camera.velocity = direction.mul(mult)
+        camera.velocity = direction.mul(mult * 0.75)
     }
 
     private fun rotate(relativeYaw: Float) {
@@ -68,10 +68,26 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
         leftLeg.teleport(leftLeg.position.withYaw(newYaw))
     }
 
-    fun moveForward(player: Player, game: Game) { rotate(0f); move(player, game, -3.0) }
-    fun moveBackward(player: Player, game: Game) { rotate(180f); move(player, game, 3.0) }
-    fun rotateRight(player: Player, game: Game) { rotate(90f); move(player, game, 3.0, defaultYaw - 90.0f) }
-    fun rotateLeft(player: Player, game: Game) { rotate(-90f); move(player, game, 3.0, defaultYaw + 90.0f) }
+    fun moveForward(player: Player, game: Game) {
+        rotate(0f)
+        move(player, game, -3.0)
+    }
+
+    fun moveBackward(player: Player, game: Game) {
+        rotate(180f)
+        move(player, game, 3.0)
+    }
+
+    fun rotateRight(player: Player, game: Game) {
+        rotate(90f)
+        move(player, game, 3.0, defaultYaw - 90.0f)
+    }
+
+    fun rotateLeft(player: Player, game: Game) {
+        rotate(-90f)
+        move(player, game, 3.0, defaultYaw + 90.0f)
+    }
+
     fun placeTNT(player: Player) {
         if(isDead) return
         val instance = player.instance
@@ -116,7 +132,7 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
         private fun createPlayerPart(model: String, profile: HeadProfile, pos: Pos, translation: Point, lobby: Instance): Entity {
             val entity = Entity(EntityType.ITEM_DISPLAY)
             entity.setNoGravity(true)
-            entity.aerodynamics = entity.aerodynamics.withVerticalAirResistance(0.7).withHorizontalAirResistance(0.7)
+            entity.aerodynamics = entity.aerodynamics.withVerticalAirResistance(.5).withHorizontalAirResistance(.5)
             entity.isGlowing = true //TODO: Fix entity not glowing everywhere except its head
             val meta = entity.entityMeta as ItemDisplayMeta
             meta.glowColorOverride = NamedTextColor.LIGHT_PURPLE.value()
@@ -162,12 +178,6 @@ data class FakeNPC(val head: Entity, val torso: Entity, val rightArm: Entity, va
             )
         }
     }
-}
-
-private operator fun FloatArray.times(relativeYaw: Float): FloatArray {
-    val arr = clone()
-    for(i in arr.indices) arr[i] *= relativeYaw
-    return arr
 }
 
 private fun Pos.toBlockPos(): Pos = Pos(blockX() + .0, blockY() + .0, blockZ() + .0)

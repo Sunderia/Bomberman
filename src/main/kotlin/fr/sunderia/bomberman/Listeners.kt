@@ -62,9 +62,10 @@ class Listeners {
                 val instance = it.instance
                 if (!it.instance.hasTag(Tag.Boolean("game"))) return@addListener
                 val filter = instance.players.filter { p -> p.uuid != it.player.uuid }
+                val game = Game.getGame(instance)
                 if (filter.isEmpty()) {
                     Game.removeGame(instance)
-                } else if (filter.filter { p -> p.gameMode == GameMode.ADVENTURE }.size == 1) {
+                } else if (filter.filter { p -> game?.getFakeNPC(p.uuid)?.isDead() != true }.size == 1) {
                     Game.playerLeft(instance)
                 }
             }
@@ -151,7 +152,10 @@ class Listeners {
                     )
                 }
                 player.updateViewerRule()
+
+                @Suppress("DEPRECATION")
                 if (!it.spawnInstance.hasTag(Tag.Boolean("game"))) return@addListener
+
                 val game = Game.getGame(player.instance)!!
                 player.gameMode = GameMode.SPECTATOR
                 game.spawnPlayer(player)
@@ -164,7 +168,7 @@ class Listeners {
                     if (!player.instance.hasTag(Tag.Boolean("game"))) return@scheduleTask
                     val hasBoxingGlove = player.hasTag(PowerupTags.BOXING_GLOVE.getBool())
                     val hasPierce = player.hasTag(PowerupTags.PIERCE.getBool())
-                    val playerLeftCount = player.instance.players.filter { it.gameMode == GameMode.ADVENTURE }.size
+                    val playerLeftCount = player.instance.players.filter { game.getFakeNPC(it.uuid)?.isDead() != true }.size
                     player.sendActionBar(
                         Component.join(
                             JoinConfiguration.separator(Component.text(" ")),
@@ -185,22 +189,23 @@ class Listeners {
 
             gameNode.addListener(PlayerDeathEvent::class.java) { event ->
                 if (!event.instance.hasTag(Tag.Boolean("game"))) return@addListener
+                val game = Game.getGame(event.instance) ?: return@addListener
                 val player = event.player
                 player.gameMode = GameMode.SPECTATOR
-                val playerAlive = player.instance.players.filter { it.gameMode == GameMode.ADVENTURE }.toList()
+                val playerAlive = player.instance.players.filter { game.getFakeNPC(it.uuid)?.isDead() != true }.toList()
                 if (playerAlive.size != 1) return@addListener
                 val winner = playerAlive[0]
 
                 player.instance.players.forEach {
                     if (it.isDead) it.respawn()
                     it.sendMessage(Component.text("${winner.username} Won"))
+                    it.stopSpectating()
                     it.teleport(spawn)
                     it.gameMode = GameMode.SPECTATOR
                 }
 
                 winner.sendTitlePart(TitlePart.TITLE, Component.text("You won", NamedTextColor.GREEN))
                 winner.teleport(spawn)
-                val game = Game.getGame(event.instance)!!
                 game.endGame()
             }
 

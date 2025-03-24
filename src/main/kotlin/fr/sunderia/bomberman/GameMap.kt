@@ -15,7 +15,12 @@ class GameMap(name: String) {
 
     val settings: MapSettings
 
-    data class MapSettings(val path: String, val timeLimit: Int, val maxPlayers: Int, val minPlayers: Int, val spawnPoints: List<Pos>)
+    data class MapSettings(val path: String, val timeLimit: Int, val maxPlayers: Int, val minPlayers: Int, val spawnPoints: List<SpawnPoint>) {
+        data class SpawnPoint(val x: Double, val y: Double, val z: Double, val yaw: Float, val cameraYaw: Float) {
+            fun toPos() = Pos(x, y, z, yaw, 0f)
+            fun add(x: Double, y: Double, z: Double) = SpawnPoint(this.x + x, this.y + y, this.z + z, yaw, cameraYaw)
+        }
+    }
 
     init {
         settings = Bomberman::class.java.getResourceAsStream("/maps/$name.json")!!.reader()
